@@ -7,11 +7,13 @@ import { z } from 'zod';
 import { ContentError, ContentStore } from './content.js';
 import type { Principal } from './authorization.js';
 import { jsonValue } from './app-db.js';
+import { migrationSourceSchema, migrationIdSchema } from './migration-contract.js';
+import { migrationLock } from './migration-store.js';
 
 const maxBytes = 12 * 1024 * 1024;
 const upload = z.object({
-  site: z.url().max(191),
-  id: z.union([z.string().min(1).max(191),z.number().int().nonnegative()]).transform(String),
+  source: migrationSourceSchema,
+  id: migrationIdSchema,
   mimeType: z.enum(['image/jpeg','image/png','image/gif','image/webp','application/pdf']),
   altText: z.string().max(1000).default(''),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
@@ -40,16 +42,16 @@ async function storageDirectory(): Promise<string> {
 }
 
 export function registerMediaTransfer(app: FastifyInstance, store: ContentStore, permission: Permission, sameOrigin: (request: FastifyRequest, reply: FastifyReply) => boolean): void {
-  app.get('/api/imports/wordpress/media-files/map', async (request,reply) => {
+  app.get('/api/migrations/media/map', async (request,reply) => {
     if (!await permission(request,reply,'content.import','content')) return;
-    const query = z.object({ site: z.url().max(191), after: z.uuid().optional() }).parse(request.query);
-    const rows = await store.db.query<{ id: string; metadata: unknown }>('SELECT id,metadata FROM lattis_media WHERE source_system=$1 AND source_site=$2 AND content_sha256 IS NOT NULL AND ($3 IS NULL OR id>$3) ORDER BY id LIMIT 100', ['wordpress',query.site,query.after ?? null]);
+    const query = z.object({ system:migrationSourceSchema.shape.system,instance:migrationSourceSchema.shape.instance, after:z.uuid().optional() }).strict().parse(request.query);
+    const rows = await store.db.query<{ id: string; external_id:string; metadata: unknown }>('SELECT id,external_id,metadata FROM lattis_media WHERE source_system=$1 AND source_site=$2 AND content_sha256 IS NOT NULL AND ($3 IS NULL OR id>$3) ORDER BY id LIMIT 100', [query.system,query.instance,query.after ?? null]);
     return { items: rows.rows.map((row) => {
       const metadata = jsonValue(row.metadata) as { sourceUrls?: unknown };
-      return { id: row.id,sourceUrls: Array.isArray(metadata?.sourceUrls) ? metadata.sourceUrls.filter((url): url is string => typeof url === 'string') : [] };
+      return { id: row.id,externalId:row.external_id,sourceUrls: Array.isArray(metadata?.sourceUrls) ? metadata.sourceUrls.filter((url): url is string => typeof url === 'string') : [] };
     }), next: rows.rows.length === 100 ? rows.rows[99].id : null };
   });
-  app.post('/api/imports/wordpress/media-files',{ bodyLimit: 18 * 1024 * 1024 }, async (request,reply) => {
+  app.post('/api/migrations/media',{ bodyLimit: 18 * 1024 * 1024 }, async (request,reply) => {
     if (!sameOrigin(request,reply)) return;
     const who = await permission(request,reply,'content.import','content'); if (!who) return;
     const input = upload.parse(request.body);
@@ -59,12 +61,12 @@ export function registerMediaTransfer(app: FastifyInstance, store: ContentStore,
     if (hash !== input.sha256) throw new ContentError(400,'Media checksum mismatch');
     const directory = await storageDirectory();
     const client = await store.db.connect();
-    const lock = `wordpress-media:${input.site}:${input.id}`;
+    const lock = migrationLock(input.source);
     let path: string | undefined;
     let transaction = false;
     try {
       await client.lock(lock);
-      const existing = await client.query<{ id: string; content_sha256: string | null; storage_ref: string }>('SELECT id,content_sha256,storage_ref FROM lattis_media WHERE source_system=$1 AND source_site=$2 AND external_id=$3', ['wordpress',input.site,input.id]);
+      const existing = await client.query<{ id: string; content_sha256: string | null; storage_ref: string }>('SELECT id,content_sha256,storage_ref FROM lattis_media WHERE source_system=$1 AND source_site=$2 AND external_id=$3', [input.source.system,input.source.instance,input.id]);
       if (existing.rows[0]) {
         if (existing.rows[0].content_sha256) {
           if (existing.rows[0].content_sha256 !== hash) throw new ContentError(409,'Media source already exists with different bytes');
@@ -80,7 +82,7 @@ export function registerMediaTransfer(app: FastifyInstance, store: ContentStore,
       await client.query('BEGIN');
       transaction = true;
       if (existing.rows[0]) await client.query('UPDATE lattis_media SET storage_ref=$1,mime_type=$2,alt_text=$3,metadata=$4,content_sha256=$5,byte_count=$6 WHERE id=$7', [`local:${id}`,input.mimeType,input.altText,JSON.stringify(input.metadata),hash,bytes.length,id]);
-      else await client.query('INSERT INTO lattis_media (id,storage_ref,mime_type,alt_text,metadata,content_sha256,byte_count,source_system,source_site,external_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [id,`local:${id}`,input.mimeType,input.altText,JSON.stringify(input.metadata),hash,bytes.length,'wordpress',input.site,input.id]);
+      else await client.query('INSERT INTO lattis_media (id,storage_ref,mime_type,alt_text,metadata,content_sha256,byte_count,source_system,source_site,external_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [id,`local:${id}`,input.mimeType,input.altText,JSON.stringify(input.metadata),hash,bytes.length,input.source.system,input.source.instance,input.id]);
       await client.query('INSERT INTO lattis_audit (actor,action,resource,result,correlation_id) VALUES ($1,$2,$3,$4,$5)', [who.id,'content.media.import',id,'allowed',request.id]);
       await client.query('COMMIT');
       transaction = false;

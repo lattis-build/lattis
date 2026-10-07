@@ -1,4 +1,3 @@
-import { resolve } from 'node:path';
 import { isIP } from 'node:net';
 
 function trustedProxies(): string[] {
@@ -37,7 +36,7 @@ export const appConfig = () => {
 
 export function appMigrationDatabaseUrl(): string {
   const runtimeUrl = required('APP_DATABASE_URL');
-  const migrationUrl = process.env.APP_MIGRATION_DATABASE_URL;
+  const migrationUrl = process.env.APP_MIGRATION_DATABASE_URL || undefined;
   if (process.env.NODE_ENV === 'production' && !migrationUrl) throw new Error('APP_MIGRATION_DATABASE_URL is required for production migrations');
   const selected = migrationUrl ?? runtimeUrl;
   if (process.env.NODE_ENV === 'production') {
@@ -49,18 +48,3 @@ export function appMigrationDatabaseUrl(): string {
   return selected;
 }
 
-export const geodeConfig = () => {
-  const mcpPublicUrl = required('GEODE_MCP_PUBLIC_URL');
-  if (process.env.NODE_ENV === 'production' && new URL(mcpPublicUrl).protocol !== 'https:') throw new Error('Public MCP requires HTTPS in production');
-  return {
-    databaseUrl: required('GEODE_DATABASE_URL'),
-    baseUrl: required('GEODE_BASE_URL'),
-    port: Number(process.env.GEODE_PORT ?? 4200),
-    host: process.env.GEODE_HOST ?? '127.0.0.1',
-    mcpHost: process.env.GEODE_MCP_HOST ?? '127.0.0.1',
-    mcpPort: Number(process.env.GEODE_MCP_PORT ?? 4201),
-    mcpPublicUrl,
-    artifactDir: resolve(process.env.GEODE_ARTIFACT_DIR ?? './geode-artifacts'),
-    publisher: required('GEODE_PUBLISHER_SLUG'),
-  };
-};

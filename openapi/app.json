@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Lattis application API",
-    "version": "0.3.0-alpha.1",
+    "version": "0.4.0-alpha.1",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
@@ -553,105 +553,6 @@
         "x-lattis-permission": "content.media.read:content"
       }
     },
-    "/api/imports/wordpress/cursor": {
-      "get": {
-        "summary": "Read WordPress import cursor",
-        "responses": {
-          "200": {
-            "description": "Result"
-          },
-          "400": {
-            "description": "Invalid input"
-          },
-          "401": {
-            "description": "Unauthenticated"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "409": {
-            "description": "Conflict"
-          }
-        },
-        "x-lattis-permission": "content.import:content"
-      }
-    },
-    "/api/imports/wordpress/batches": {
-      "post": {
-        "summary": "Import an idempotent WordPress batch",
-        "responses": {
-          "200": {
-            "description": "Result"
-          },
-          "400": {
-            "description": "Invalid input"
-          },
-          "401": {
-            "description": "Unauthenticated"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "409": {
-            "description": "Conflict"
-          }
-        },
-        "x-lattis-permission": "content.import:content",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WordPressBatch"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/imports/wordpress/users/cursor": {
-      "get": {
-        "summary": "Read WordPress user import cursor",
-        "x-lattis-permission": "user.import:user",
-        "responses": {
-          "200": {
-            "description": "Cursor"
-          },
-          "401": {
-            "description": "Unauthenticated"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      }
-    },
-    "/api/imports/wordpress/users/batches": {
-      "post": {
-        "summary": "Import WordPress identities, optionally with encrypted legacy password hashes",
-        "x-lattis-permission": "user.import:user",
-        "responses": {
-          "200": {
-            "description": "Batch imported"
-          },
-          "400": {
-            "description": "Invalid input"
-          },
-          "401": {
-            "description": "Unauthenticated"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "409": {
-            "description": "Cursor conflict"
-          },
-          "503": {
-            "description": "Password migration is not configured"
-          }
-        }
-      }
-    },
     "/api/me/imported-identities": {
       "get": {
         "summary": "List source identities for a verified email",
@@ -677,37 +578,6 @@
           },
           "409": {
             "description": "Identity conflict"
-          }
-        }
-      }
-    },
-    "/api/imports/wordpress/media-files": {
-      "post": {
-        "summary": "Upload a WordPress media file with checksum",
-        "x-lattis-permission": "content.import:content",
-        "responses": {
-          "201": {
-            "description": "File imported"
-          },
-          "200": {
-            "description": "Already imported"
-          },
-          "400": {
-            "description": "Invalid file"
-          },
-          "409": {
-            "description": "Source conflict"
-          }
-        }
-      }
-    },
-    "/api/imports/wordpress/media-files/map": {
-      "get": {
-        "summary": "List migrated media URLs for content rewriting",
-        "x-lattis-permission": "content.import:content",
-        "responses": {
-          "200": {
-            "description": "Mapping page"
           }
         }
       }
@@ -839,6 +709,249 @@
             "description": "JavaScript module"
           }
         }
+      }
+    },
+    "/api/migrations/content/cursor": {
+      "get": {
+        "summary": "Read a source-neutral content migration cursor",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.import:content",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "system",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          {
+            "in": "query",
+            "name": "instance",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 191
+            }
+          },
+          {
+            "in": "query",
+            "name": "importKey",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          }
+        ]
+      }
+    },
+    "/api/migrations/content/batches": {
+      "post": {
+        "summary": "Import an atomic source-neutral content batch",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.import:content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MigrationContentBatch"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/migrations/users/cursor": {
+      "get": {
+        "summary": "Read a source-neutral users migration cursor",
+        "x-lattis-permission": "user.import:user",
+        "responses": {
+          "200": {
+            "description": "Cursor"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "system",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          {
+            "in": "query",
+            "name": "instance",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 191
+            }
+          },
+          {
+            "in": "query",
+            "name": "importKey",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          }
+        ]
+      }
+    },
+    "/api/migrations/users/batches": {
+      "post": {
+        "summary": "Import an atomic source-neutral users batch",
+        "x-lattis-permission": "user.import:user",
+        "responses": {
+          "200": {
+            "description": "Batch imported"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Cursor conflict"
+          },
+          "503": {
+            "description": "Password migration is not configured"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MigrationUserBatch"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/migrations/media": {
+      "post": {
+        "summary": "Upload a source-scoped media file with a checksum",
+        "x-lattis-permission": "content.import:content",
+        "responses": {
+          "201": {
+            "description": "File imported"
+          },
+          "200": {
+            "description": "Already imported"
+          },
+          "400": {
+            "description": "Invalid file"
+          },
+          "409": {
+            "description": "Source conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MigrationMediaUpload"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/migrations/media/map": {
+      "get": {
+        "summary": "List migrated media URLs for content rewriting",
+        "x-lattis-permission": "content.import:content",
+        "responses": {
+          "200": {
+            "description": "Mapping page"
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "system",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "in": "query",
+            "name": "instance",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 191
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
       }
     }
   },
@@ -972,94 +1085,532 @@
         },
         "additionalProperties": false
       },
-      "WordPressBatch": {
+      "MigrationSource": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "instance": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 191
+          }
+        },
+        "required": [
+          "system",
+          "instance"
+        ],
+        "additionalProperties": false
+      },
+      "MigrationId": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 191
+          },
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        ]
+      },
+      "MigrationTerm": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/MigrationId"
+          },
+          "taxonomy": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[a-z][a-z0-9_.-]{0,79}$"
+          },
+          "slug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 191,
+            "pattern": "^[a-z0-9][a-z0-9._~-]*$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 191
+          },
+          "parentId": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MigrationId"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "taxonomy",
+          "slug",
+          "label"
+        ],
+        "additionalProperties": false
+      },
+      "MigrationMedia": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/MigrationId"
+          },
+          "storageRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "HTTP(S) reference; Core never fetches this URL. Upload files separately."
+          },
+          "mimeType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 191
+          },
+          "altText": {
+            "type": "string",
+            "default": ""
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "default": {}
+          }
+        },
+        "required": [
+          "id",
+          "storageRef",
+          "mimeType"
+        ],
+        "additionalProperties": false
+      },
+      "MigrationLink": {
+        "type": "object",
+        "properties": {
+          "relation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[a-z][a-z0-9_.-]{0,79}$"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "content"
+                  },
+                  "type": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "pattern": "^[a-z][a-z0-9_.-]{0,79}$"
+                  },
+                  "id": {
+                    "$ref": "#/components/schemas/MigrationId"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "type",
+                  "id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "media"
+                  },
+                  "id": {
+                    "$ref": "#/components/schemas/MigrationId"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "id"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "relation",
+          "target"
+        ],
+        "additionalProperties": false
+      },
+      "MigrationContent": {
         "type": "object",
         "required": [
-          "site",
-          "importKey",
-          "expectedCursor",
-          "nextCursor",
-          "items"
+          "type",
+          "slug",
+          "id"
         ],
         "properties": {
-          "site": {
+          "type": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "publishedAt": {
             "type": "string",
-            "format": "uri"
+            "format": "date-time"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "id": {
+            "$ref": "#/components/schemas/MigrationId"
+          },
+          "authorId": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MigrationId"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "terms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "taxonomy": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80,
+                  "pattern": "^[a-z][a-z0-9_.-]{0,79}$"
+                },
+                "id": {
+                  "$ref": "#/components/schemas/MigrationId"
+                }
+              },
+              "required": [
+                "taxonomy",
+                "id"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 500,
+            "minItems": 0
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MigrationLink"
+            },
+            "maxItems": 500,
+            "minItems": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "MigrationContentBatch": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "source": {
+            "$ref": "#/components/schemas/MigrationSource"
           },
           "importKey": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
           },
           "expectedCursor": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 191
           },
           "nextCursor": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 191,
+            "description": "Distinct checkpoint for every batch, including the last. Never reset to null."
           },
           "types": {
             "type": "array",
             "items": {
-              "type": "object"
-            }
+              "$ref": "#/components/schemas/ContentType"
+            },
+            "maxItems": 100,
+            "minItems": 0
           },
           "terms": {
             "type": "array",
             "items": {
-              "type": "object"
-            }
+              "$ref": "#/components/schemas/MigrationTerm"
+            },
+            "maxItems": 500,
+            "minItems": 0
           },
           "media": {
             "type": "array",
             "items": {
-              "type": "object"
-            }
+              "$ref": "#/components/schemas/MigrationMedia"
+            },
+            "maxItems": 500,
+            "minItems": 0
           },
           "items": {
             "type": "array",
-            "minItems": 1,
-            "maxItems": 100,
             "items": {
-              "type": "object",
-              "required": [
-                "id",
-                "type",
-                "slug",
-                "status"
-              ],
-              "properties": {
-                "id": {
-                  "oneOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "integer"
-                    }
-                  ]
-                },
-                "type": {
-                  "type": "string"
-                },
-                "slug": {
-                  "type": "string"
-                },
-                "status": {
-                  "type": "string"
-                },
-                "acf": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              },
-              "additionalProperties": true
-            }
+              "$ref": "#/components/schemas/MigrationContent"
+            },
+            "maxItems": 100,
+            "minItems": 0
           }
         },
+        "required": [
+          "schemaVersion",
+          "source",
+          "importKey",
+          "expectedCursor",
+          "nextCursor",
+          "items"
+        ],
+        "additionalProperties": false,
+        "description": "Atomic batch. At least one record or type is required. Omitted links/terms/author preserve current associations; explicit empty arrays or null author clear them. Missing related records reject the batch. Duplicate source IDs reject the batch. Slugs must be mapped by the connector; conflicts are not silently renamed."
+      },
+      "ImportedCredential": {
+        "type": "object",
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[a-z][a-z0-9_.-]{0,79}$"
+          },
+          "hash": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2048
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "default": {}
+          }
+        },
+        "required": [
+          "algorithm",
+          "hash"
+        ],
+        "additionalProperties": false
+      },
+      "MigrationUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/MigrationId"
+          },
+          "email": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 191,
+            "format": "email"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 191
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "maxItems": 20,
+            "minItems": 0
+          },
+          "credential": {
+            "$ref": "#/components/schemas/ImportedCredential"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName"
+        ],
+        "additionalProperties": false
+      },
+      "MigrationUserBatch": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "source": {
+            "$ref": "#/components/schemas/MigrationSource"
+          },
+          "importKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "expectedCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 191
+          },
+          "nextCursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 191,
+            "description": "Distinct checkpoint for every batch, including the last. Never reset to null."
+          },
+          "authMode": {
+            "enum": [
+              "verified-email",
+              "password"
+            ],
+            "default": "verified-email"
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MigrationUser"
+            },
+            "maxItems": 100,
+            "minItems": 1
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "source",
+          "importKey",
+          "expectedCursor",
+          "nextCursor",
+          "users"
+        ],
+        "additionalProperties": false,
+        "description": "Roles are preserved as source data only. Password migration needs an operator-controlled verifier with an allowed algorithm. Imported identities cannot replace an existing Lattis account."
+      },
+      "MigrationMediaUpload": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/MigrationSource"
+          },
+          "id": {
+            "$ref": "#/components/schemas/MigrationId"
+          },
+          "mimeType": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/gif",
+              "image/webp",
+              "application/pdf"
+            ]
+          },
+          "altText": {
+            "type": "string",
+            "maxLength": 1000,
+            "default": ""
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bytesBase64": {
+            "type": "string",
+            "maxLength": 16777224,
+            "contentEncoding": "base64"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "sourceFile": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "sourceUrls": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uri",
+                  "maxLength": 2048
+                },
+                "maxItems": 30,
+                "minItems": 0
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "source",
+          "id",
+          "mimeType",
+          "sha256",
+          "bytesBase64"
+        ],
         "additionalProperties": false
       }
     }

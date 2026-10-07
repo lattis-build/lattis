@@ -28,3 +28,6 @@ release-bundles/
 /SECURITY.md
 /CHANGELOG.md
 /tools/prepare-source-release.py
+
+# Independently versioned local services
+/services/

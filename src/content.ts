@@ -42,12 +42,12 @@ export class ContentStore {
     const result = await client.query<{ type_key: string; label: string; fields: unknown }>('SELECT type_key,label,fields FROM lattis_content_type WHERE type_key=$1', [keyValue]);
     return result.rows[0] ? contentType.parse({ key: result.rows[0].type_key, label: result.rows[0].label, fields: jsonValue(result.rows[0].fields) }) : null;
   }
-  async createType(value: unknown): Promise<TypeDefinition> {
+  async createType(value: unknown, client: AppDatabase | AppClient = this.db): Promise<TypeDefinition> {
     const input = contentType.parse(value);
     if (new Set(input.fields.map((item) => item.name)).size !== input.fields.length) throw new ContentError(400, 'Duplicate fields');
-    const exists = await this.type(input.key);
+    const exists = await this.type(input.key, client);
     if (exists) throw new ContentError(409, 'Content type already exists');
-    await this.db.query('INSERT INTO lattis_content_type (type_key,label,fields) VALUES ($1,$2,$3)', [input.key,input.label,JSON.stringify(input.fields)]);
+    await client.query('INSERT INTO lattis_content_type (type_key,label,fields) VALUES ($1,$2,$3)', [input.key,input.label,JSON.stringify(input.fields)]);
     return input;
   }
   async listTypes(): Promise<TypeDefinition[]> {
@@ -97,7 +97,7 @@ export class ContentStore {
     return (await client.query('SELECT source_system,source_site,source_kind,external_id,source_digest,imported_at FROM lattis_content_source WHERE content_id=$1 ORDER BY source_system,source_site,source_kind,external_id', [id])).rows;
   }
   async author(id: string, client: AppDatabase | AppClient = this.db) {
-    return (await client.query('SELECT u.source_site,u.external_id,u.display_name,u.claimed_user_id FROM lattis_content_author a JOIN lattis_import_user u ON u.id=a.import_user_id WHERE a.content_id=$1', [id])).rows[0] ?? null;
+    return (await client.query('SELECT u.source_system,u.source_site,u.external_id,u.display_name,u.claimed_user_id FROM lattis_content_author a JOIN lattis_import_user u ON u.id=a.import_user_id WHERE a.content_id=$1', [id])).rows[0] ?? null;
   }
   async publicLinks(id: string) {
     const links = await this.links(id);

@@ -163,6 +163,7 @@ CREATE TABLE IF NOT EXISTS lattis_import_cursor (
 );
 CREATE TABLE IF NOT EXISTS lattis_import_user (
   id uuid PRIMARY KEY,
+  source_system text NOT NULL,
   source_site text NOT NULL,
   external_id text NOT NULL,
   email text NOT NULL,
@@ -174,7 +175,7 @@ CREATE TABLE IF NOT EXISTS lattis_import_user (
   password_claimed_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (source_site, external_id)
+  CONSTRAINT lattis_import_user_source UNIQUE (source_system, source_site, external_id)
 );
 ALTER TABLE lattis_import_user ADD COLUMN IF NOT EXISTS legacy_password_ciphertext text;
 ALTER TABLE lattis_import_user ADD COLUMN IF NOT EXISTS password_claimed_at timestamptz;

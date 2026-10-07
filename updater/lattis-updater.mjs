@@ -62,7 +62,7 @@ async function authorization(path, p) {
   if (m.extensions.length) {
     if (!p.runner || p.runner.executablePath !== '/opt/lattis-runner/extension-runner.mjs' || typeof p.runner.socketPath !== 'string' || !p.runner.socketPath.startsWith('/') || !p.runner.socketPath.endsWith('.sock') || p.runner.digest !== m.files['node_modules/lattis/runner/extension-runner.mjs']?.digest || hash(await protectedFile(p.runner.executablePath)) !== p.runner.digest) throw new Error('Provision the exact authorized runner outside the application before deployment');
   }
-  if (!Array.isArray(m.migrations) || !Array.isArray(m.components) || m.components.some((v) => !['app','admin','geode','worker'].includes(v))) throw new Error('Invalid release components');
+  if (!Array.isArray(m.migrations) || !Array.isArray(m.components) || m.components.some((v) => !['app','admin','worker'].includes(v))) throw new Error('Invalid release components');
   const names = Object.keys(m.files); let total = 0;
   if (!names.length || names.length > 20000) throw new Error('Invalid release size');
   for (const name of names) { relative(name); const f = m.files[name]; if (!Number.isSafeInteger(f.length) || f.length < 0 || f.length > 100_000_000 || !/^sha256:[a-f0-9]{64}$/.test(f.digest)) throw new Error('Invalid release inventory'); total += f.length; }
@@ -143,7 +143,7 @@ async function activate(id, p) {
   return { releaseId: id, status: 'active-awaiting-service-health', note: 'Restart the managed service, then record health externally. Database rollback is never automatic.' };
 }
 async function run(component, p) {
-  if (!['app','admin','geode'].includes(component) || process.getuid?.() === 0) throw new Error('Run requires an authorized component and an unprivileged runtime account');
+  if (!['app','admin'].includes(component) || process.getuid?.() === 0) throw new Error('Run requires an authorized component and an unprivileged runtime account');
   if (process.env.NODE_OPTIONS || process.env.NODE_PATH) throw new Error('Node runtime injection options are forbidden');
   const id = await active(p); if (!/^sha256:[a-f0-9]{64}$/.test(id ?? '')) throw new Error('No active release');
   const r = await authorization(join(p.stateDirectory, 'authorizations', `${id.slice(7)}.json`), p);
@@ -151,7 +151,7 @@ async function run(component, p) {
   const directory = join(p.releaseDirectory, id.slice(7)); await checkFiles(directory, r.manifest);
   requireReview(JSON.parse((await read(join(directory, 'lattis.review.json'), 100000)).toString('utf8')), r.manifest.files, r.manifest.core, r.manifest.configurationDigest, false, p.edgeProtection.configurationDigest);
   const cli = join(directory, 'node_modules/lattis/bin/lattis.js');
-  const child = spawn(process.execPath, [cli, component === 'app' ? 'serve-app' : component === 'admin' ? 'serve-admin' : 'serve-geode'], { cwd: directory, env: { ...process.env, NODE_ENV: 'production' }, stdio: 'inherit', shell: false });
+  const child = spawn(process.execPath, [cli, component === 'app' ? 'serve-app' : 'serve-admin'], { cwd: directory, env: { ...process.env, NODE_ENV: 'production' }, stdio: 'inherit', shell: false });
   for (const signal of ['SIGTERM','SIGINT']) process.on(signal, () => child.kill(signal));
   child.on('error', (error) => { process.stderr.write(error.message + '\n'); process.exitCode = 1; });
   child.on('exit', (code) => { process.exitCode = code ?? 1; });
@@ -168,6 +168,6 @@ const [command, ...args] = process.argv.slice(2);
 try {
   const p = await policy();
   if (command !== 'run' && process.getuid?.() !== 0) throw new Error('Updater mutations require the protected deployment account');
-  const result = command === 'run' ? await run(args[0], p) : await locked(p, () => command === 'stage' ? stage(args[0], args[1], p) : command === 'activate' ? activate(args[0], p) : command === 'integrity' ? integrity(p) : Promise.reject(new Error('Commands: stage BUNDLE AUTHORIZATION; activate RELEASE_ID; run app|admin|geode; integrity')));
+  const result = command === 'run' ? await run(args[0], p) : await locked(p, () => command === 'stage' ? stage(args[0], args[1], p) : command === 'activate' ? activate(args[0], p) : command === 'integrity' ? integrity(p) : Promise.reject(new Error('Commands: stage BUNDLE AUTHORIZATION; activate RELEASE_ID; run app|admin; integrity')));
   if (result) process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 1; }

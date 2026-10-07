@@ -27,11 +27,11 @@ export function createAuth(db: AppDatabase, options?: { baseUrl: string; signupO
       enabled: true,
       disableSignUp: !(options?.signupOpen ?? config.signupOpen),
       maxPasswordLength: 4096,
-      // Core gates unverified users by authorization; WordPress password proof is a separate trust path.
+      // Core gates unverified users by authorization; Imported credential proof is a separate trust path.
       requireEmailVerification: false,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
-        // The imported address may never have been verified by WordPress.
+        // The imported address may never have been verified by the source.
         // Recovery of password-imported accounts needs a separate authenticated/admin flow.
         const imported = await db.query('SELECT 1 FROM lattis_import_user WHERE claimed_user_id=$1 AND password_claimed_at IS NOT NULL LIMIT 1', [user.id]);
         if (!user.emailVerified || imported.rowCount) return;

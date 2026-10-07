@@ -129,6 +129,17 @@ export async function migrateApp(db: AppDatabase): Promise<void> {
   for (const statement of splitSql(sql)) await db.query(statement);
 }
 
+export async function migrateMigrationProtocol(db:AppDatabase):Promise<void> {
+  const sql=await readFile(new URL(`../db/upgrades/0.4-migration-protocol.${db.dialect}.sql`,import.meta.url),'utf8');
+  const client=await db.connect();
+  try {
+    await client.lock('lattis_core_migration_protocol');
+    if(db.dialect==='postgres')await client.query(sql);
+    else for(const statement of splitSql(sql))await client.query(statement);
+  }catch(error){if(db.dialect==='postgres')await client.query('ROLLBACK');throw error;}
+  finally{await client.unlock('lattis_core_migration_protocol').finally(()=>client.release());}
+}
+
 export async function migrateAdmin(db: AppDatabase): Promise<void> {
   const file = db.dialect === 'postgres' ? 'admin.sql' : 'admin.mariadb.sql';
   const sql = await readFile(new URL(`../db/${file}`, import.meta.url), 'utf8');

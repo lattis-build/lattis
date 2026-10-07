@@ -4,15 +4,12 @@ import { access, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import semver from 'semver';
-import { appConfig, appMigrationDatabaseUrl, geodeConfig } from './config.js';
-import { pool, migrate } from './db.js';
-import { appDatabase, migrateAdmin, migrateApp, jsonValue } from './app-db.js';
-import { Geode } from './geode.js';
+import { appConfig, appMigrationDatabaseUrl } from './config.js';
+import { appDatabase, migrateAdmin, migrateApp, migrateMigrationProtocol, jsonValue } from './app-db.js';
 import { digest, pack, publisherFingerprint, unpack, type Manifest } from './manifest.js';
 import { getMigrations } from 'better-auth/db/migration';
 import { createAuth } from './auth.js';
 import { installCandidate, registryRequest } from './registry-client.js';
-import { exportQuarantine, importAdmission } from './geode-admission.js';
 import { prohibitProductionMutation } from './production-release.js';
 import { prepareRelease, signRelease, bundleRelease, platformCandidate, reviewTemplate } from './release.js';
 import { migrateProject } from './project-migrations.js';
@@ -20,6 +17,7 @@ import { projectFile, readProject } from './project.js';
 import { migrateImmuDb, optionalImmuDbAuditBridge } from './immudb-audit.js';
 import { parseExtension } from './extension-contract.js';
 import { relativePath } from './security-files.js';
+import { initializeProject, installApplication, configureProject, installerArguments } from './installer.js';
 
 const [command, ...args] = process.argv.slice(2);
 const root = process.cwd();
@@ -45,26 +43,6 @@ async function request(path: string, options: RequestInit = {}): Promise<Respons
   return response;
 }
 
-async function init(target: string): Promise<void> {
-  const directory = resolve(target);
-  const coreRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
-  if (directory === coreRoot) throw new Error('Choose a new application directory');
-  if (coreRoot.includes('/node_modules/')) throw new Error('Initialize from a Core checkout in phase 1');
-  const core = await json(join(coreRoot, 'package.json')) as { version: string };
-  await mkdir(directory, { recursive: false });
-  await mkdir(join(directory, 'packages', 'local'), { recursive: true });
-  await mkdir(join(directory, 'migrations'));
-  await mkdir(join(directory, 'extensions'));
-  await writeJson(join(directory, 'lattis.config.json'), { schemaVersion: 1, applicationId: directory.split('/').pop()?.toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'lattis-app', localPublisher: 'owner', trustedModules: [], extensions: [], trustedPublishers: {}, migrations: [] });
-  await writeJson(join(directory, 'lattis.lock'), { schemaVersion: 2, core: core.version, packages: {} });
-  await writeJson(join(directory, 'tsconfig.json'), { compilerOptions: { target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', strict: true, noEmit: true, types: ['node'] }, include: ['packages/**/*.ts'] });
-  await writeFile(join(directory, '.env.example'), `APP_DATABASE_URL=postgres://lattis:change-me@localhost:5432/lattis_app\nAPP_MIGRATION_DATABASE_URL=\nAPP_DATABASE_CA_FILE=\nLATTIS_IMMUDB_URL=\nLATTIS_IMMUDB_MIGRATION_URL=\nLATTIS_IMMUDB_CA_FILE=\nLATTIS_IMMUDB_NAMESPACE=\nLATTIS_AUDIT_HMAC_KEY=\nBETTER_AUTH_SECRET=replace-with-random-secret-at-least-32-characters\nAPP_BASE_URL=http://127.0.0.1:4100\nAPP_PORT=4100\nAPP_HOST=127.0.0.1\nLATTIS_OWNER_EMAIL=owner@example.test\nLATTIS_SIGNUP_OPEN=false\nLATTIS_TRUSTED_ORIGINS=http://127.0.0.1:3000\nLATTIS_MAIL_WEBHOOK_URL=\nLATTIS_MAIL_WEBHOOK_TOKEN=\nLATTIS_SECRET_PROVIDER_URL=\nLATTIS_SECRET_PROVIDER_TOKEN=\nLATTIS_REGISTRY_MODE=official\nGEODE_PUBLISHER_SLUG=owner\n`, { flag: 'wx' });
-  await writeFile(join(directory, '.gitignore'), 'node_modules/\n.env\n.env.*\n!.env.example\n.lattis/\n', { flag: 'wx' });
-  const source = relative(directory, coreRoot).split('\\').join('/');
-  await writeJson(join(directory, 'package.json'), { name: directory.split('/').pop()?.toLowerCase().replace(/[^a-z0-9-_]/g, '-') || 'lattis-app', private: true, type: 'module', scripts: { lattis: 'lattis', app: 'lattis serve-app', 'mcp:local': 'lattis mcp-local', 'mcp:remote': 'lattis mcp-remote', admin: 'lattis serve-admin' }, dependencies: { lattis: `file:${source.startsWith('.') ? source : `./${source}`}`, auth: '^1.7.6', zod: '^4.1.12' }, devDependencies: { '@types/node': '^22.18.6', '@types/pg': '^8.15.5', typescript: '^5.9.2' } });
-  output({ initialized: directory, next: 'Install dependencies without scripts, configure .env and Core/Auth migrations, then prepare declarative extensions; TypeScript modules are development-only' });
-}
-
 async function keygen(): Promise<void> {
   await mkdir(keys, { recursive: true, mode: 0o700 });
   const pair = generateKeyPairSync('ed25519', { publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
@@ -87,56 +65,6 @@ async function trustPublisher(slug: string, fingerprint: string): Promise<void> 
   config.trustedPublishers[slug] = fingerprint;
   await writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
   output({ publisher: slug, fingerprint: config.trustedPublishers[slug] });
-}
-
-async function bootstrapGeode(): Promise<void> {
-  const config = geodeConfig();
-  const db = pool(config.databaseUrl);
-  try {
-    await migrate(db, 'geode');
-    const publicKey = await readFile(join(keys, 'publisher-public.pem'), 'utf8');
-    await db.query('INSERT INTO geode_publisher (slug,display_name,public_key) VALUES ($1,$2,$3) ON CONFLICT (slug) DO NOTHING', [config.publisher, config.publisher, publicKey]);
-    if (process.env.GEODE_OAUTH_ISSUER && process.env.GEODE_OAUTH_OWNER_SUBJECT) {
-      await db.query('INSERT INTO geode_mcp_identity (issuer,subject,publisher_slug) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [process.env.GEODE_OAUTH_ISSUER, process.env.GEODE_OAUTH_OWNER_SUBJECT, config.publisher]);
-    }
-    const geode = new Geode(db, config.artifactDir);
-    const apiToken = await geode.issueToken(config.publisher, 'geode-api', ['package:read', 'package:download', 'package:publish', 'package:revoke', 'offer:write', 'entitlement:grant'], new Date(Date.now() + 90 * 86400_000));
-    await writeFile(join(keys, 'geode-api-token'), `${apiToken}\n`, { flag: 'wx', mode: 0o600 });
-    output({ tokenFile: join(keys, 'geode-api-token'), note: 'Move this credential to a secret manager for deployment. MCP uses OAuth access tokens from the configured authorization server.' });
-  } finally { await db.end(); }
-}
-
-async function geodeTokens(): Promise<void> {
-  const config = geodeConfig();
-  const db = pool(config.databaseUrl);
-  try {
-    const result = await db.query('SELECT id,subject,audience,scopes,expires_at,revoked_at FROM geode_token ORDER BY expires_at DESC');
-    output(result.rows);
-  } finally { await db.end(); }
-}
-
-async function revokeToken(id: string): Promise<void> {
-  const config = geodeConfig();
-  const db = pool(config.databaseUrl);
-  try {
-    const changed = await db.query('UPDATE geode_token SET revoked_at=now() WHERE id=$1 AND revoked_at IS NULL RETURNING id', [id]);
-    if (!changed.rowCount) throw new Error('Token not found or already revoked');
-    output({ revoked: id });
-  } finally { await db.end(); }
-}
-
-async function issueInstanceToken(instanceId: string): Promise<void> {
-  if (!/^[a-z0-9-]{1,100}$/.test(instanceId)) throw new Error('Invalid instance ID');
-  const config = geodeConfig();
-  const db = pool(config.databaseUrl);
-  try {
-    const geode = new Geode(db, config.artifactDir);
-    const secret = await geode.issueInstanceToken(`instance:${instanceId}`, new Date(Date.now() + 90 * 86400_000));
-    await mkdir(keys, { recursive: true, mode: 0o700 });
-    const path = join(keys, `geode-instance-${instanceId}-token`);
-    await writeFile(path, `${secret}\n`, { flag: 'wx', mode: 0o600 });
-    output({ subject: `instance:${instanceId}`, tokenFile: path });
-  } finally { await db.end(); }
 }
 
 async function appServiceToken(name: string, scopeList: string, daysText = '30'): Promise<void> {
@@ -323,32 +251,28 @@ async function revoke(name: string, version: string, reason: string): Promise<vo
 async function install(name: string, range: string): Promise<void> { output(await installCandidate(root, name, range)); }
 
 async function main(): Promise<void> {
-  if (!['serve-app', 'serve-admin', 'serve-geode', 'mcp-remote'].includes(command ?? '')) prohibitProductionMutation();
+  if (!['serve-app', 'serve-admin', 'mcp-remote'].includes(command ?? '')) prohibitProductionMutation();
   switch (command) {
-    case 'init': return init(args[0] ?? '.');
+    case 'init': { output({initialized:await initializeProject(args[0]??'my-app',resolve(fileURLToPath(new URL('..',import.meta.url)))),next:'Run lattis configure in the application, or use lattis install for guided setup'});return; }
+    case 'install': { const options=installerArguments(args);await installApplication(options.target,resolve(fileURLToPath(new URL('..',import.meta.url))),options);return; }
+    case 'configure': { const options=installerArguments(args);await configureProject(options.targetProvided?options.target:root,options.configFile);return; }
     case 'keygen': return keygen();
     case 'geode:trust-owner': return trustOwner();
     case 'geode:trust': return trustPublisher(need(args[0], 'publisher'), need(args[1], 'fingerprint'));
     case 'db:app': { const db = appDatabase(appMigrationDatabaseUrl()); try { await migrateApp(db); output({ migrated: 'app', dialect: db.dialect }); } finally { await db.end(); } return; }
+    case 'db:upgrade-migrations': { const db=appDatabase(appMigrationDatabaseUrl()); try { await migrateMigrationProtocol(db); output({upgraded:'migration-protocol-v1',dialect:db.dialect}); } finally { await db.end(); } return; }
     case 'db:admin': { const db = appDatabase(appMigrationDatabaseUrl()); try { await migrateAdmin(db); output({ migrated: 'admin', dialect: db.dialect }); } finally { await db.end(); } return; }
     case 'db:immudb': await migrateImmuDb(); output({ migrated: 'immudb-audit' }); return;
     case 'db:auth': { const db = appDatabase(appMigrationDatabaseUrl()); try { const auth = createAuth(db); const migrations = await getMigrations(auth.options); await migrations.runMigrations(); output({ migrated: 'auth' }); } finally { await db.end(); } return; }
     case 'db:project': { const phase = need(args[0], 'phase') as 'expand' | 'backfill' | 'contract'; if (!['expand', 'backfill', 'contract'].includes(phase)) throw new Error('Phase must be expand, backfill or contract'); const db = appDatabase(appMigrationDatabaseUrl()); try { output(await migrateProject(db, root, phase)); } finally { await db.end(); } return; }
-    case 'db:geode': { const db = pool(geodeConfig().databaseUrl); try { await migrate(db, 'geode'); output({ migrated: 'geode' }); } finally { await db.end(); } return; }
     case 'app:audit-export': return auditLedgerCommand('export');
     case 'app:audit-status': return auditLedgerCommand('status');
     case 'app:audit-verify': return auditLedgerCommand('verify');
     case 'video:package': { const { packageClearCmaf } = await import('./video-packager.js'); const db = appDatabase(appConfig().databaseUrl); try { output(await packageClearCmaf(db, need(args[0], 'video ID'))); } finally { await db.end(); } return; }
-    case 'geode:bootstrap': return bootstrapGeode();
-    case 'geode:export-quarantine': { const config = geodeConfig(), db = pool(config.databaseUrl); try { output(await exportQuarantine(db, config.artifactDir, need(args[0], 'package'), need(args[1], 'version'), need(args[2], 'export directory'))); } finally { await db.end(); } return; }
-    case 'geode:admit': { const config = geodeConfig(), db = pool(config.databaseUrl); try { output(await importAdmission(db, need(args[0], 'package'), need(args[1], 'version'), join(root, '.lattis', 'admission-distribution'))); } finally { await db.end(); } return; }
     case 'app:service-token': return appServiceToken(need(args[0], 'name'), need(args[1], 'scopes'), args[2]);
     case 'app:owner': return createOwner(args[0]);
     case 'app:tokens': return appTokens();
     case 'app:revoke-token': return revokeAppToken(need(args[0], 'token id'));
-    case 'geode:tokens': return geodeTokens();
-    case 'geode:instance-token': return issueInstanceToken(need(args[0], 'instance ID'));
-    case 'geode:revoke-token': return revokeToken(need(args[0], 'token id'));
     case 'node:new': return scaffold('node', need(args[0], 'name'), need(args[1], 'directory'));
     case 'shard:new': return scaffold('shard', need(args[0], 'name'), need(args[1], 'directory'));
     case 'migration:new': return migrationNew(need(args[0], 'id'), need(args[1], 'phase') as 'expand' | 'backfill' | 'contract', args[2]);
@@ -367,10 +291,9 @@ async function main(): Promise<void> {
     case 'release:vendor-core': return vendorCore();
     case 'serve-app': { await import('./app-server.js'); return; }
     case 'serve-admin': { await import('./admin-server.js'); return; }
-    case 'serve-geode': { await import('./geode-server.js'); return; }
     case 'mcp-local': { await import('./local-mcp.js'); return; }
     case 'mcp-remote': { await import('./remote-mcp.js'); return; }
-    default: throw new Error('Commands: init, serve-app, serve-admin, mcp-local, mcp-remote, keygen, geode:trust-owner, geode:trust, db:app, db:admin, db:auth, db:project, db:immudb, db:geode, geode:bootstrap, geode:export-quarantine, geode:admit, geode:instance-token, geode:tokens, geode:revoke-token, app:owner, app:service-token, app:tokens, app:revoke-token, app:audit-export, app:audit-status, app:audit-verify, video:package, extension:new, node:new, shard:new, migration:new, geode:publish, geode:offer, geode:grant, geode:revoke, geode:search, geode:install, release:vendor-core, release:review-template, release:prepare, release:sign, release:bundle, release:platform');
+    default: throw new Error('Commands: install [directory] [--config-file FILE] [--skip-dependencies], configure [directory] [--config-file FILE], init, serve-app, serve-admin, mcp-local, mcp-remote, keygen, geode:trust-owner, geode:trust, db:app, db:upgrade-migrations, db:admin, db:auth, db:project, db:immudb, app:owner, app:service-token, app:tokens, app:revoke-token, app:audit-export, app:audit-status, app:audit-verify, video:package, extension:new, node:new, shard:new, migration:new, geode:publish, geode:offer, geode:grant, geode:revoke, geode:search, geode:install, release:vendor-core, release:review-template, release:prepare, release:sign, release:bundle, release:platform');
   }
 }
 

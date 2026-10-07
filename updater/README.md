@@ -6,7 +6,7 @@ Install it separately from the application under a protected `/opt/lattis-update
 
 - `stage BUNDLE AUTHORIZATION` stages an inactive release after checking its authorization and files.
 - `activate RELEASE_ID` activates a staged release with the required maintenance receipt and approvals.
-- `run app`, `run admin` and `run geode` launch authorized components as an unprivileged runtime account.
+- `run app`, `run admin` launch authorized components as an unprivileged runtime account.
 - `integrity` compares active files with the authorized inventory and reports the result.
 
 Invoke commands through `node /opt/lattis-updater/lattis-updater.mjs`. Staging, activation and integrity observation use the protected deployment account. Runtime launch requires a separate account without root privileges.

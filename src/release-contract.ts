@@ -20,7 +20,7 @@ export const releaseSchema = z.object({
   extensions: z.array(z.object({ path: pathSchema, digest: sha256Schema, name: z.string().regex(/^@[a-z0-9-]+\/[a-z0-9-]+$/), version: z.string().refine((v) => !!semver.valid(v)) }).strict()).max(100),
   security: z.object({ profile: z.literal('controlled-v1'), ui: z.literal('declarative-v1'), execution: z.literal('data-only-v1'), reviewDigest: sha256Schema }).strict(),
   migrations: z.array(migrationSchema).max(500),
-  components: z.array(z.enum(['app', 'admin', 'mcp', 'geode', 'worker'])).min(1),
+  components: z.array(z.enum(['app', 'admin', 'mcp', 'worker'])).min(1),
   configurationDigest: sha256Schema,
   compatibility: z.object({ previousRelease: sha256Schema.nullable(), dataRollback: z.enum(['compatible', 'forward-only']), minimumUpdater: z.literal(2) }).strict(),
 }).strict();

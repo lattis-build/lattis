@@ -6,7 +6,7 @@ export type ProjectConfig = {
   schemaVersion: 1;
   applicationId: string;
   localPublisher: string;
-  releaseComponents: ('app' | 'admin' | 'geode')[];
+  releaseComponents: ('app' | 'admin')[];
   trustedModules: string[];
   extensions: string[];
   trustedPublishers: Record<string, string>;
@@ -16,7 +16,7 @@ export type ProjectConfig = {
 export async function readProject(root = process.cwd()): Promise<ProjectConfig> {
   const parsed = JSON.parse(await readFile(resolve(root, 'lattis.config.json'), 'utf8')) as Partial<ProjectConfig>;
   if (!parsed.applicationId || !/^[a-z0-9-]{1,100}$/.test(parsed.applicationId) || !parsed.localPublisher || !/^[a-z0-9-]+$/.test(parsed.localPublisher)) throw new Error('Set applicationId and localPublisher in lattis.config.json');
-  if (parsed.releaseComponents !== undefined && (!Array.isArray(parsed.releaseComponents) || !parsed.releaseComponents.length || parsed.releaseComponents.some((v) => !['app','admin','geode'].includes(v)))) throw new Error('Invalid releaseComponents');
+  if (parsed.releaseComponents !== undefined && (!Array.isArray(parsed.releaseComponents) || !parsed.releaseComponents.length || parsed.releaseComponents.some((v) => !['app','admin'].includes(v)))) throw new Error('Invalid releaseComponents');
   if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.trustedModules) || !parsed.trustedModules.every((value) => typeof value === 'string')) throw new Error('Invalid Lattis project configuration');
   if (parsed.extensions !== undefined && (!Array.isArray(parsed.extensions) || parsed.extensions.length > 100 || !parsed.extensions.every((value) => typeof value === 'string') || new Set(parsed.extensions).size !== parsed.extensions.length)) throw new Error('Invalid declarative extension list');
   if (parsed.migrations !== undefined && !Array.isArray(parsed.migrations)) throw new Error('Invalid project migrations');

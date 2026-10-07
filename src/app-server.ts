@@ -9,9 +9,9 @@ import { appDatabase, insertIgnore, jsonValue } from './app-db.js';
 import { ContentStore, registerContentRoutes } from './content.js';
 import { contentNodes } from './content-nodes.js';
 import { videoNodes } from './video-nodes.js';
-import { registerWordPressImport } from './wordpress-import.js';
+import { registerContentImport } from './content-import.js';
 import { registerUserImport } from './user-import.js';
-import { WordPressPasswordBridge } from './wordpress-password.js';
+import { ImportedCredentialBridge } from './imported-credentials.js';
 import { registerMediaTransfer } from './media-transfer.js';
 import { purgeOldVideoPlayback, registerVideoTransfer } from './video-transfer.js';
 import { optionalImmuDbAuditBridge } from './immudb-audit.js';
@@ -30,7 +30,7 @@ const coreVersion = (JSON.parse(await readFile(new URL('../package.json', import
 const db = appDatabase(config.databaseUrl);
 const auditLedger = optionalImmuDbAuditBridge(db);
 const auth = createAuth(db);
-const wordpressPasswords = new WordPressPasswordBridge(db, auth);
+const importedCredentials = new ImportedCredentialBridge(db, auth);
 const app = Fastify({ logger: httpLogger, bodyLimit: 1_000_000, trustProxy: config.trustedProxies.length ? config.trustedProxies : false });
 registerHttpPolicy(app, config.baseUrl);
 let draining = false;
@@ -145,10 +145,10 @@ app.route({ method: ['GET', 'POST'], url: '/api/auth/*', async handler(request, 
     const credentials = request.body as { email?: unknown; password?: unknown } | null;
     if (credentials && typeof credentials.email === 'string' && typeof credentials.password === 'string') {
       const email = credentials.email.toLowerCase();
-      if (response.status === 401 && await wordpressPasswords.provisionAfterFailedSignIn(email, credentials.password)) response = await auth.handler(authRequest());
+      if (response.status === 401 && await importedCredentials.provisionAfterFailedSignIn(email, credentials.password)) response = await auth.handler(authRequest());
       if (response.ok) {
         const body = await response.clone().json() as { user?: { id?: string } };
-        if (body.user?.id) await wordpressPasswords.claimAfterSignIn(body.user.id, email, credentials.password, request.id);
+        if (body.user?.id) await importedCredentials.claimAfterSignIn(body.user.id, email, credentials.password, request.id);
       }
     }
   }
@@ -358,7 +358,7 @@ for (const route of routes) {
 }
 
 registerContentRoutes(app, content, requirePermission, sameOrigin);
-registerWordPressImport(app, content, requirePermission, sameOrigin);
+registerContentImport(app, content, requirePermission, sameOrigin);
 registerUserImport(app, content, requirePermission, principal, sameOrigin);
 registerMediaTransfer(app, content, requirePermission, sameOrigin);
 registerVideoTransfer(app, db, requirePermission, sameOrigin);

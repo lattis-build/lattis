@@ -1,6 +1,6 @@
 {
   "name": "lattis",
-  "version": "0.3.0-alpha.1",
+  "version": "0.4.0-alpha.1",
   "private": true,
   "type": "module",
   "bin": {
@@ -9,7 +9,13 @@
   "exports": {
     "./runtime": "./src/runtime.ts",
     "./video-contract": "./src/video-contract.ts",
-    "./app-db": "./src/app-db.ts"
+    "./app-db": "./src/app-db.ts",
+    "./package-contract": "./src/manifest.ts",
+    "./registry-contract": "./src/registry-contract.ts",
+    "./security-files": "./src/security-files.ts",
+    "./http-policy": "./src/http-policy.ts",
+    "./distribution-client": "./updater/lib/tuf-client.mjs",
+    "./migration-contract": "./src/migration-contract.ts"
   },
   "files": [
     "bin",
@@ -30,7 +36,6 @@
   "scripts": {
     "app": "node bin/lattis.js serve-app",
     "admin": "node bin/lattis.js serve-admin",
-    "geode": "node --env-file=.env --import tsx src/geode-server.ts",
     "mcp:local": "node bin/lattis.js mcp-local",
     "mcp:remote": "node bin/lattis.js mcp-remote",
     "lattis": "node bin/lattis.js",
