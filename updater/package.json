@@ -1,9 +1,16 @@
 {
   "name": "@lattis/updater",
-  "version": "1.0.0-alpha.1",
+  "version": "2.0.0-alpha.1",
   "private": true,
   "type": "module",
-  "bin": { "lattis-updater": "./lattis-updater.mjs" },
-  "engines": { "node": "^22.22.2 || ^24.15.0 || >=26.0.0" },
-  "dependencies": { "tuf-js": "6.0.0" }
+  "bin": {
+    "lattis-updater": "./lattis-updater.mjs"
+  },
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
+  "dependencies": {
+    "tuf-js": "6.0.0"
+  },
+  "license": "MIT"
 }

@@ -19,7 +19,7 @@ export async function exportQuarantine(db: Pool, artifactDirectory: string, name
   await mkdir(join(output, 'artifacts'), { recursive: true, mode: 0o700 });
   const target = `artifacts/${row.digest.slice(7)}.json`;
   await writeFile(join(output, target), bytes, { flag: 'wx', mode: 0o600 });
-  await writeFile(join(output, `${row.digest.slice(7)}.review.json`), JSON.stringify({ name, version, target, digest: row.digest, length: bytes.length, publisherPublicKey: row.publisher_public_key, signature: row.signature, admission: { decision: 'PENDING', evidence: [], execution: 'download-only' } }, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+  await writeFile(join(output, `${row.digest.slice(7)}.review.json`), JSON.stringify({ name, version, target, digest: row.digest, length: bytes.length, publisherPublicKey: row.publisher_public_key, signature: row.signature, dependencies: Object.fromEntries(Object.keys(artifact.manifest.dependencies).map((name) => [name, 'PENDING_EXACT_DIGEST'])), admission: { decision: 'PENDING', policy: 'controlled-v1', reviewer: '', evidence: [], checks: ['security','compatibility','ui','dependencies','license','maintenance'].map((category) => ({ category, status: 'pending', evidence: [] })), execution: 'download-only' } }, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
   return { target, status: 'quarantined-awaiting-independent-review' };
 }
 
@@ -40,12 +40,13 @@ export async function importAdmission(db: Pool, name: string, version: string, s
     if (!target || target.hashes.sha256 !== entry.digest.slice(7) || target.length !== entry.length) throw new Error('Admission is not bound to a TUF artifact');
     const artifact = unpack(await boundedFile(await client.downloadTarget(target), 5_000_000));
     if (artifact.manifest.name !== name || artifact.manifest.version !== version) throw new Error('Admission identity mismatch');
+    if (Object.keys(artifact.manifest.dependencies).sort().join('|') !== Object.keys(entry.dependencies).sort().join('|')) throw new Error('Admission does not cover all direct dependencies');
     const connection = await db.connect();
     try {
       await connection.query('BEGIN');
       const row = (await connection.query('SELECT digest,publisher_public_key,signature,state FROM geode_version WHERE package_name=$1 AND version=$2 FOR UPDATE', [name,version])).rows[0];
       if (!row || row.digest !== entry.digest || row.publisher_public_key !== entry.publisherPublicKey || row.signature !== entry.signature || !['quarantined','admitted'].includes(row.state)) throw new Error('Admission differs from the quarantined publication');
-      await connection.query('INSERT INTO geode_admission (package_name,version,artifact_digest,admission_digest,catalog_digest,evidence,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (package_name,version) DO UPDATE SET admission_digest=EXCLUDED.admission_digest,catalog_digest=EXCLUDED.catalog_digest,evidence=EXCLUDED.evidence,expires_at=EXCLUDED.expires_at,admitted_at=now()', [name,version,entry.digest,digest(Buffer.from(canonicalJson(entry.admission))),digest(bytes),entry.admission,entry.admission.expiresAt]);
+      await connection.query('INSERT INTO geode_admission (package_name,version,artifact_digest,admission_digest,catalog_digest,evidence,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (package_name,version) DO UPDATE SET admission_digest=EXCLUDED.admission_digest,catalog_digest=EXCLUDED.catalog_digest,evidence=EXCLUDED.evidence,expires_at=EXCLUDED.expires_at,admitted_at=now()', [name,version,entry.digest,digest(Buffer.from(canonicalJson({ admission: entry.admission, dependencies: entry.dependencies }))),digest(bytes),entry.admission,entry.admission.expiresAt]);
       await connection.query("UPDATE geode_version SET state='admitted' WHERE package_name=$1 AND version=$2", [name,version]);
       await connection.query('INSERT INTO geode_audit (actor,action,resource,result,correlation_id) VALUES ($1,$2,$3,$4,$5)', ['offline-release','package.admit',`${name}@${version}`,digest(bytes),randomUUID()]);
       await connection.query('COMMIT');

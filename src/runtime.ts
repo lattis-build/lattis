@@ -9,6 +9,7 @@ import type { Principal } from './authorization.js';
 import { manifestSchema } from './manifest.js';
 import { projectFile, readProject } from './project.js';
 import type { z } from 'zod';
+import { extensionNodes, readExtensions } from './extensions.js';
 
 export type SecretAccess = { get: (name: string) => Promise<string> };
 export type NodeContext = { db: AppClient; principal: Principal; secrets: SecretAccess; invoke: (name: string, input: unknown) => Promise<unknown> };
@@ -48,7 +49,9 @@ export async function loadLocalModules(dialect: AppDialect = 'postgres'): Promis
   const release = await productionRelease();
   const config = await readProject();
   if (release && (digest(Buffer.from(canonicalJson(config))) !== release.configurationDigest || canonicalJson(config.trustedModules.map((p) => p.replace(/^\.\//, ''))) !== canonicalJson(release.trustedModules))) throw new Error('Runtime project configuration differs from the authorized release');
-  const nodes: NodeDefinition[] = [];
+  if (release && config.trustedModules.length) throw new Error('In-process extension code is development-only in Lattis 0.3');
+  if (release && canonicalJson((await readExtensions()).map(({ path, digest: sha, definition }) => ({ path, digest: sha, name: definition.name, version: definition.version }))) !== canonicalJson(release.extensions)) throw new Error('Extension definitions differ from the authorized release');
+  const nodes: NodeDefinition[] = await extensionNodes();
   const routes: LoadedShardRoute[] = [];
   for (const modulePath of config.trustedModules) {
     if (!modulePath.startsWith('./packages/local/')) throw new Error('Only locally reviewed application modules may execute in phase 1');

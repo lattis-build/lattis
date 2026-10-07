@@ -14,10 +14,12 @@ import { createAuth } from './auth.js';
 import { installCandidate, registryRequest } from './registry-client.js';
 import { exportQuarantine, importAdmission } from './geode-admission.js';
 import { prohibitProductionMutation } from './production-release.js';
-import { prepareRelease, signRelease, bundleRelease, platformCandidate } from './release.js';
+import { prepareRelease, signRelease, bundleRelease, platformCandidate, reviewTemplate } from './release.js';
 import { migrateProject } from './project-migrations.js';
 import { projectFile, readProject } from './project.js';
 import { migrateImmuDb, optionalImmuDbAuditBridge } from './immudb-audit.js';
+import { parseExtension } from './extension-contract.js';
+import { relativePath } from './security-files.js';
 
 const [command, ...args] = process.argv.slice(2);
 const root = process.cwd();
@@ -52,14 +54,15 @@ async function init(target: string): Promise<void> {
   await mkdir(directory, { recursive: false });
   await mkdir(join(directory, 'packages', 'local'), { recursive: true });
   await mkdir(join(directory, 'migrations'));
-  await writeJson(join(directory, 'lattis.config.json'), { schemaVersion: 1, applicationId: directory.split('/').pop()?.toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'lattis-app', localPublisher: 'owner', trustedModules: [], trustedPublishers: {}, migrations: [] });
+  await mkdir(join(directory, 'extensions'));
+  await writeJson(join(directory, 'lattis.config.json'), { schemaVersion: 1, applicationId: directory.split('/').pop()?.toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'lattis-app', localPublisher: 'owner', trustedModules: [], extensions: [], trustedPublishers: {}, migrations: [] });
   await writeJson(join(directory, 'lattis.lock'), { schemaVersion: 2, core: core.version, packages: {} });
   await writeJson(join(directory, 'tsconfig.json'), { compilerOptions: { target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', strict: true, noEmit: true, types: ['node'] }, include: ['packages/**/*.ts'] });
   await writeFile(join(directory, '.env.example'), `APP_DATABASE_URL=postgres://lattis:change-me@localhost:5432/lattis_app\nAPP_MIGRATION_DATABASE_URL=\nAPP_DATABASE_CA_FILE=\nLATTIS_IMMUDB_URL=\nLATTIS_IMMUDB_MIGRATION_URL=\nLATTIS_IMMUDB_CA_FILE=\nLATTIS_IMMUDB_NAMESPACE=\nLATTIS_AUDIT_HMAC_KEY=\nBETTER_AUTH_SECRET=replace-with-random-secret-at-least-32-characters\nAPP_BASE_URL=http://127.0.0.1:4100\nAPP_PORT=4100\nAPP_HOST=127.0.0.1\nLATTIS_OWNER_EMAIL=owner@example.test\nLATTIS_SIGNUP_OPEN=false\nLATTIS_TRUSTED_ORIGINS=http://127.0.0.1:3000\nLATTIS_MAIL_WEBHOOK_URL=\nLATTIS_MAIL_WEBHOOK_TOKEN=\nLATTIS_SECRET_PROVIDER_URL=\nLATTIS_SECRET_PROVIDER_TOKEN=\nLATTIS_REGISTRY_MODE=official\nGEODE_PUBLISHER_SLUG=owner\n`, { flag: 'wx' });
   await writeFile(join(directory, '.gitignore'), 'node_modules/\n.env\n.env.*\n!.env.example\n.lattis/\n', { flag: 'wx' });
   const source = relative(directory, coreRoot).split('\\').join('/');
   await writeJson(join(directory, 'package.json'), { name: directory.split('/').pop()?.toLowerCase().replace(/[^a-z0-9-_]/g, '-') || 'lattis-app', private: true, type: 'module', scripts: { lattis: 'lattis', app: 'lattis serve-app', 'mcp:local': 'lattis mcp-local', 'mcp:remote': 'lattis mcp-remote', admin: 'lattis serve-admin' }, dependencies: { lattis: `file:${source.startsWith('.') ? source : `./${source}`}`, auth: '^1.7.6', zod: '^4.1.12' }, devDependencies: { '@types/node': '^22.18.6', '@types/pg': '^8.15.5', typescript: '^5.9.2' } });
-  output({ initialized: directory, next: 'Install dependencies, configure .env, migrate Core/Auth, then add your own Nodes and Shards' });
+  output({ initialized: directory, next: 'Install dependencies without scripts, configure .env and Core/Auth migrations, then prepare declarative extensions; TypeScript modules are development-only' });
 }
 
 async function keygen(): Promise<void> {
@@ -207,6 +210,26 @@ async function scaffold(kind: 'node' | 'shard', name: string, directory: string)
   output({ created: target, kind, name, registered: entry });
 }
 
+async function scaffoldExtension(name: string, requestedPath: string): Promise<void> {
+  const config=await readProject(root),path=relativePath(requestedPath.replace(/^\.\//,''));
+  if (!/^@[a-z0-9-]+\/[a-z0-9-]+$/.test(name) || !name.startsWith(`@${config.localPublisher}/`) || !path.startsWith('extensions/') || !path.endsWith('.json')) throw new Error('Use a local publisher and extensions/*.json');
+  if (config.extensions.includes(path) || config.extensions.includes(`./${path}`)) throw new Error('Extension is already registered');
+  const prefix=name.slice(1).replace('/','.');
+  const core=await json(fileURLToPath(new URL('../package.json',import.meta.url))) as { version:string };
+  const definition=parseExtension({schemaVersion:1,execution:'declarative-v1',name,version:'0.1.0',coreCompatibility:`^${core.version}`,description:'',license:'UNLICENSED',capabilities:{invoke:[]},
+    nodes:[{name:`${prefix}.describe`,kind:'query',action:'module.read',resourceType:'module',resource:{kind:'all'},input:[],output:[{name:'message',label:'Message',type:'text',required:true,maxLength:100}],steps:[],result:{op:'literal',value:{message:'Describe this extension before release.'}}}],
+    ui:{views:[{id:'describe',title:'New extension',description:'Development scaffold; requires review before production.',node:`${prefix}.describe`}]}});
+  // Resolve every parent through the same no-symlink policy as remote edits.
+  const { remoteWorkspace }=await import('./remote-workspace.js');
+  const workspace=await remoteWorkspace(root);
+  const parent = path.slice(0, path.lastIndexOf('/'));
+  await workspace.mkdir(parent);
+  await workspace.write(path,`${JSON.stringify(definition,null,2)}\n`,null);
+  config.extensions.push(path);
+  await writeFile(join(root,'lattis.config.json'),`${JSON.stringify(config,null,2)}\n`);
+  output({created:path,execution:'declarative-v1',status:'development-awaiting-review'});
+}
+
 async function migrationNew(id: string, phase: 'expand' | 'backfill' | 'contract', packageDirectory?: string): Promise<void> {
   if (!/^[a-zA-Z0-9_-]+$/.test(id) || !['expand', 'backfill', 'contract'].includes(phase)) throw new Error('Invalid migration ID or phase');
   const project = await readProject(root);
@@ -335,7 +358,9 @@ async function main(): Promise<void> {
     case 'geode:revoke': return revoke(need(args[0], 'package'), need(args[1], 'version'), need(args[2], 'reason'));
     case 'geode:search': { const response = await request(`/v1/packages?q=${encodeURIComponent(args.join(' '))}`); output(await response.json()); return; }
     case 'geode:install': return install(need(args[0], 'package'), args[1] ?? '*');
+    case 'extension:new': return scaffoldExtension(need(args[0],'@local-publisher/name'),need(args[1],'extensions/name.json'));
     case 'release:prepare': { output(await prepareRelease(root, need(args[0], 'fully assembled release directory'), need(args[1], 'platform target descriptor'), args[2])); return; }
+    case 'release:review-template': { output(await reviewTemplate(need(args[0], 'assembled release directory'), need(args[1], 'edge configuration digest'), need(args[2], 'new review output file'))); return; }
     case 'release:sign': { output(await signRelease(need(args[0], 'descriptor'), need(args[1], 'offline owner private key'))); return; }
     case 'release:bundle': { output(await bundleRelease(need(args[0], 'assembled release directory'), need(args[1], 'descriptor'), need(args[2], 'output file'))); return; }
     case 'release:platform': { output(await platformCandidate(need(args[0], 'assembled platform directory'), need(args[1], 'version'), need(args[2], 'output file'))); return; }
@@ -345,7 +370,7 @@ async function main(): Promise<void> {
     case 'serve-geode': { await import('./geode-server.js'); return; }
     case 'mcp-local': { await import('./local-mcp.js'); return; }
     case 'mcp-remote': { await import('./remote-mcp.js'); return; }
-    default: throw new Error('Commands: init, serve-app, serve-admin, mcp-local, mcp-remote, keygen, geode:trust-owner, geode:trust, db:app, db:admin, db:auth, db:project, db:immudb, db:geode, geode:bootstrap, geode:export-quarantine, geode:admit, geode:instance-token, geode:tokens, geode:revoke-token, app:owner, app:service-token, app:tokens, app:revoke-token, app:audit-export, app:audit-status, app:audit-verify, video:package, node:new, shard:new, migration:new, geode:publish, geode:offer, geode:grant, geode:revoke, geode:search, geode:install, release:vendor-core, release:prepare, release:sign, release:bundle, release:platform');
+    default: throw new Error('Commands: init, serve-app, serve-admin, mcp-local, mcp-remote, keygen, geode:trust-owner, geode:trust, db:app, db:admin, db:auth, db:project, db:immudb, db:geode, geode:bootstrap, geode:export-quarantine, geode:admit, geode:instance-token, geode:tokens, geode:revoke-token, app:owner, app:service-token, app:tokens, app:revoke-token, app:audit-export, app:audit-status, app:audit-verify, video:package, extension:new, node:new, shard:new, migration:new, geode:publish, geode:offer, geode:grant, geode:revoke, geode:search, geode:install, release:vendor-core, release:review-template, release:prepare, release:sign, release:bundle, release:platform');
   }
 }
 

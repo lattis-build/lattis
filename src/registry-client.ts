@@ -29,9 +29,13 @@ export const admittedPackageSchema = z.object({
   name: z.string().regex(/^@[a-z0-9-]+\/[a-z0-9-]+$/), version: z.string().refine((v) => !!semver.valid(v)),
   target: z.string().regex(/^artifacts\/[a-f0-9]{64}\.json$/), digest: sha256Schema, length: z.number().int().min(1).max(5_000_000),
   publisherPublicKey: z.string().max(2000), signature: z.string().max(256),
-  admission: z.object({ id: z.string().min(1).max(100), decision: z.literal('approved'), evidence: z.array(z.string().min(1).max(2000)).min(1).max(100), reviewedAt: z.iso.datetime(), expiresAt: z.iso.datetime(), execution: z.literal('download-only') }).strict(),
+  dependencies: z.record(z.string().regex(/^@[a-z0-9-]+\/[a-z0-9-]+$/), sha256Schema),
+  admission: z.object({ id: z.string().min(1).max(100), decision: z.literal('approved'), evidence: z.array(z.string().min(1).max(2000)).min(1).max(100), reviewedAt: z.iso.datetime(), expiresAt: z.iso.datetime(), execution: z.literal('download-only'),
+    policy: z.literal('controlled-v1'), reviewer: z.string().min(1).max(200),
+    checks: z.array(z.object({ category: z.enum(['security','compatibility','ui','dependencies','license','maintenance']), status: z.literal('passed'), evidence: z.array(z.string().min(1).max(2000)).min(1).max(30) }).strict()).length(6).refine((checks) => new Set(checks.map((check) => check.category)).size === 6),
+  }).strict().refine((admission) => Date.parse(admission.reviewedAt) <= Date.now() && Date.parse(admission.expiresAt) > Date.parse(admission.reviewedAt) && Date.parse(admission.expiresAt) - Date.parse(admission.reviewedAt) <= 180 * 86400000, 'Invalid admission validity'),
 }).strict();
-export const catalogSchema = z.object({ schemaVersion: z.literal(2), registryId: z.literal('lattis-official'), packages: z.array(admittedPackageSchema).max(20000) }).strict();
+export const catalogSchema = z.object({ schemaVersion: z.literal(3), registryId: z.literal('lattis-official'), packages: z.array(admittedPackageSchema).max(20000) }).strict();
 export const lockSchema = z.object({ schemaVersion: z.literal(2), core: z.string().refine((v) => !!semver.valid(v)), packages: z.record(z.string().regex(/^@[a-z0-9-]+\/[a-z0-9-]+$/), packagePinSchema) }).strict();
 
 // Discovery API responses are display data. Resolution uses only the TUF target.
@@ -70,15 +74,17 @@ export async function installCandidate(root: string, name: string, range: string
       if (key.asymmetricKeyType !== 'ed25519' || !verify(null, Buffer.from(meta.digest), key, Buffer.from(meta.signature, 'base64'))) throw new Error('Invalid publisher signature');
       const { manifest } = unpack(bytes);
       if (manifest.name !== packageName || manifest.version !== version || !semver.satisfies(lock.core, manifest.coreCompatibility, { includePrerelease: true })) throw new Error('Artifact identity or compatibility mismatch');
+      if (Object.keys(manifest.dependencies).sort().join('|') !== Object.keys(meta.dependencies).sort().join('|')) throw new Error('Review does not cover the exact dependency graph');
       visiting.add(packageName);
       for (const [dependency, dependencyRange] of Object.entries(manifest.dependencies)) await resolvePackage(dependency, dependencyRange);
+      for (const [dependency, dependencyDigest] of Object.entries(meta.dependencies)) if (candidate.packages[dependency]?.digest !== dependencyDigest) throw new Error('Dependency differs from the version reviewed with its parent');
       visiting.delete(packageName); selected.set(packageName, version!);
       await writeFile(join(cache, meta.digest.slice(7)), bytes, { flag: 'wx', mode: 0o600 }).catch(async (error: NodeJS.ErrnoException) => { if (error.code !== 'EEXIST') throw error; if (digest(await boundedFile(join(cache, meta.digest.slice(7)), 5_000_000)) !== meta.digest) throw new Error('Immutable artifact cache conflict'); });
-      candidate.packages[packageName] = { version: version!, digest: meta.digest, kind: manifest.kind, publisherPublicKey: meta.publisherPublicKey, signature: meta.signature, registryId: catalog.registryId, admissionDigest: digest(Buffer.from(canonicalJson(meta.admission))) };
+      candidate.packages[packageName] = { version: version!, digest: meta.digest, kind: manifest.kind, publisherPublicKey: meta.publisherPublicKey, signature: meta.signature, registryId: catalog.registryId, admissionDigest: digest(Buffer.from(canonicalJson({ admission: meta.admission, dependencies: meta.dependencies }))) };
     }
     await resolvePackage(name, range);
     // Existing pins must also remain admitted in the current catalog.
-    for (const [pkg, pin] of Object.entries(candidate.packages)) if (!catalog.packages.some((p) => p.name === pkg && p.version === pin.version && p.digest === pin.digest && digest(Buffer.from(canonicalJson(p.admission))) === pin.admissionDigest && new Date(p.admission.expiresAt).getTime() > Date.now())) throw new Error(`Existing pin requires renewal or removal: ${pkg}`);
+    for (const [pkg, pin] of Object.entries(candidate.packages)) if (!catalog.packages.some((p) => p.name === pkg && p.version === pin.version && p.digest === pin.digest && digest(Buffer.from(canonicalJson({ admission: p.admission, dependencies: p.dependencies }))) === pin.admissionDigest && new Date(p.admission.expiresAt).getTime() > Date.now() && Object.entries(p.dependencies).every(([name, sha]) => candidate.packages[name]?.digest === sha))) throw new Error(`Existing pin requires renewal or removal: ${pkg}`);
     const path = join(root, '.lattis', 'candidates', 'lattis.lock');
     await atomicFile(path, `${JSON.stringify(candidate, null, 2)}\n`);
     return { candidate: path, package: name, version: candidate.packages[name].version, execution: 'disabled', note: 'Downloaded packages cannot execute in Core in phase 1. Active lattis.lock is unchanged.' };

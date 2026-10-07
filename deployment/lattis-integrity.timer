@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic Lattis file integrity observation
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Unit=lattis-integrity.service
+
+[Install]
+WantedBy=timers.target

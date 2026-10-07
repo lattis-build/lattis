@@ -2,7 +2,11 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Lattis application API",
-    "version": "0.1.0-content-draft"
+    "version": "0.3.0-alpha.1",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
   },
   "servers": [
     {
@@ -606,40 +610,236 @@
       }
     },
     "/api/imports/wordpress/users/cursor": {
-      "get": { "summary": "Read WordPress user import cursor", "x-lattis-permission": "user.import:user", "responses": { "200": { "description": "Cursor" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" } } }
+      "get": {
+        "summary": "Read WordPress user import cursor",
+        "x-lattis-permission": "user.import:user",
+        "responses": {
+          "200": {
+            "description": "Cursor"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
     },
     "/api/imports/wordpress/users/batches": {
-      "post": { "summary": "Import WordPress identities, optionally with encrypted legacy password hashes", "x-lattis-permission": "user.import:user", "responses": { "200": { "description": "Batch imported" }, "400": { "description": "Invalid input" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "409": { "description": "Cursor conflict" }, "503": { "description": "Password migration is not configured" } } }
+      "post": {
+        "summary": "Import WordPress identities, optionally with encrypted legacy password hashes",
+        "x-lattis-permission": "user.import:user",
+        "responses": {
+          "200": {
+            "description": "Batch imported"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Cursor conflict"
+          },
+          "503": {
+            "description": "Password migration is not configured"
+          }
+        }
+      }
     },
     "/api/me/imported-identities": {
-      "get": { "summary": "List source identities for a verified email", "responses": { "200": { "description": "Identities" }, "401": { "description": "Verified account required" } } }
+      "get": {
+        "summary": "List source identities for a verified email",
+        "responses": {
+          "200": {
+            "description": "Identities"
+          },
+          "401": {
+            "description": "Verified account required"
+          }
+        }
+      }
     },
     "/api/me/imported-identities/claim": {
-      "post": { "summary": "Claim source identities after email verification", "responses": { "200": { "description": "Claimed count" }, "401": { "description": "Verified account required" }, "409": { "description": "Identity conflict" } } }
+      "post": {
+        "summary": "Claim source identities after email verification",
+        "responses": {
+          "200": {
+            "description": "Claimed count"
+          },
+          "401": {
+            "description": "Verified account required"
+          },
+          "409": {
+            "description": "Identity conflict"
+          }
+        }
+      }
     },
     "/api/imports/wordpress/media-files": {
-      "post": { "summary": "Upload a WordPress media file with checksum", "x-lattis-permission": "content.import:content", "responses": { "201": { "description": "File imported" }, "200": { "description": "Already imported" }, "400": { "description": "Invalid file" }, "409": { "description": "Source conflict" } } }
+      "post": {
+        "summary": "Upload a WordPress media file with checksum",
+        "x-lattis-permission": "content.import:content",
+        "responses": {
+          "201": {
+            "description": "File imported"
+          },
+          "200": {
+            "description": "Already imported"
+          },
+          "400": {
+            "description": "Invalid file"
+          },
+          "409": {
+            "description": "Source conflict"
+          }
+        }
+      }
     },
     "/api/imports/wordpress/media-files/map": {
-      "get": { "summary": "List migrated media URLs for content rewriting", "x-lattis-permission": "content.import:content", "responses": { "200": { "description": "Mapping page" } } }
+      "get": {
+        "summary": "List migrated media URLs for content rewriting",
+        "x-lattis-permission": "content.import:content",
+        "responses": {
+          "200": {
+            "description": "Mapping page"
+          }
+        }
+      }
     },
     "/api/media/{id}/file": {
-      "get": { "summary": "Serve a local file when linked to published content or authorized", "responses": { "200": { "description": "File" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "404": { "description": "File not found" } } }
+      "get": {
+        "summary": "Serve a local file when linked to published content or authorized",
+        "responses": {
+          "200": {
+            "description": "File"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      }
     },
     "/api/videos/{id}/file": {
-      "put": { "summary": "Stream an MP4 upload into private storage", "x-lattis-permission": "video.manage:video", "requestBody": { "required": true, "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } }, "responses": { "201": { "description": "Video uploaded" }, "400": { "description": "Hash or format mismatch" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "409": { "description": "Upload conflict" }, "413": { "description": "Too large" } } }
+      "put": {
+        "summary": "Stream an MP4 upload into private storage",
+        "x-lattis-permission": "video.manage:video",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Video uploaded"
+          },
+          "400": {
+            "description": "Hash or format mismatch"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Upload conflict"
+          },
+          "413": {
+            "description": "Too large"
+          }
+        }
+      }
     },
     "/api/videos/{id}/playback": {
-      "post": { "summary": "Create a player-neutral attributed playback session with HLS/DASH CMAF sources when packaged", "x-lattis-permission": "video.play:video", "responses": { "200": { "description": "Playback descriptor v1 with sources, protection and watermark policy" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "501": { "description": "Required DRM or forensic watermark is unavailable" } } }
+      "post": {
+        "summary": "Create a player-neutral attributed playback session with HLS/DASH CMAF sources when packaged",
+        "x-lattis-permission": "video.play:video",
+        "responses": {
+          "200": {
+            "description": "Playback descriptor v1 with sources, protection and watermark policy"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "501": {
+            "description": "Required DRM or forensic watermark is unavailable"
+          }
+        }
+      }
     },
     "/api/videos/{id}/playback/{playbackId}/packages/{packageId}/{path}": {
-      "get": { "summary": "Serve a CMAF HLS/DASH manifest or segment within an authorized playback session", "x-lattis-permission": "video.play:video", "responses": { "200": { "description": "Manifest or segment" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "404": { "description": "Session or package unavailable" } } }
+      "get": {
+        "summary": "Serve a CMAF HLS/DASH manifest or segment within an authorized playback session",
+        "x-lattis-permission": "video.play:video",
+        "responses": {
+          "200": {
+            "description": "Manifest or segment"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Session or package unavailable"
+          }
+        }
+      }
     },
     "/api/videos/{id}/stream": {
-      "get": { "summary": "Stream an authorized playback with byte ranges", "x-lattis-permission": "video.play:video", "responses": { "200": { "description": "Full MP4" }, "206": { "description": "MP4 byte range" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "416": { "description": "Invalid range" } } }
+      "get": {
+        "summary": "Stream an authorized playback with byte ranges",
+        "x-lattis-permission": "video.play:video",
+        "responses": {
+          "200": {
+            "description": "Full MP4"
+          },
+          "206": {
+            "description": "MP4 byte range"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "416": {
+            "description": "Invalid range"
+          }
+        }
+      }
     },
     "/lattis-video-player.js": {
-      "get": { "summary": "Load the reusable Lattis video player web component", "responses": { "200": { "description": "JavaScript module" } } }
+      "get": {
+        "summary": "Load the reusable Lattis video player web component",
+        "responses": {
+          "200": {
+            "description": "JavaScript module"
+          }
+        }
+      }
     }
   },
   "components": {

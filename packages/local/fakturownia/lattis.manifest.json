@@ -5,28 +5,101 @@
   "version": "0.1.0",
   "description": "Optional Fakturownia invoice adapter with encrypted intent and manual reconciliation of uncertain creates",
   "coreCompatibility": ">=0.2.0-alpha.1 <0.3.0",
-  "databaseDialects": ["postgres", "mariadb"],
-  "files": ["index.ts", "contract.ts", "seal.ts", "client.ts", "worker.ts", "migrations/001.sql", "migrations/001.mariadb.sql", "migrations/002.sql", "migrations/002.mariadb.sql", "README.md"],
+  "databaseDialects": [
+    "postgres",
+    "mariadb"
+  ],
+  "files": [
+    "index.ts",
+    "contract.ts",
+    "seal.ts",
+    "client.ts",
+    "worker.ts",
+    "migrations/001.sql",
+    "migrations/001.mariadb.sql",
+    "migrations/002.sql",
+    "migrations/002.mariadb.sql",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {},
-  "capabilities": ["outbound:fakturownia", "invoice-intents"],
-  "secrets": ["FAKTUROWNIA_PII_KEY"],
-  "actions": ["fakturownia.invoice.create", "fakturownia.invoice.read"],
+  "capabilities": [
+    "outbound:fakturownia",
+    "invoice-intents"
+  ],
+  "secrets": [
+    "FAKTUROWNIA_PII_KEY"
+  ],
+  "actions": [
+    "fakturownia.invoice.create",
+    "fakturownia.invoice.read"
+  ],
   "connections": [
-    { "from": "lattis.fakturownia.invoice.from-sale", "to": "lattis.commerce.sale.get", "kind": "invokes" },
-    { "from": "lattis.fakturownia.invoice.from-sale", "to": "lattis.fakturownia.invoice.request", "kind": "invokes" },
-    { "from": "lattis.fakturownia.invoice.from-sale", "to": "lattis.commerce.sale.link", "kind": "invokes" },
-    { "from": "lattis.fakturownia.invoice.request", "to": "process:fakturownia-worker", "kind": "queues" },
-    { "from": "process:fakturownia-worker", "to": "external:fakturownia-api", "kind": "outbound" }
+    {
+      "from": "lattis.fakturownia.invoice.from-sale",
+      "to": "lattis.commerce.sale.get",
+      "kind": "invokes"
+    },
+    {
+      "from": "lattis.fakturownia.invoice.from-sale",
+      "to": "lattis.fakturownia.invoice.request",
+      "kind": "invokes"
+    },
+    {
+      "from": "lattis.fakturownia.invoice.from-sale",
+      "to": "lattis.commerce.sale.link",
+      "kind": "invokes"
+    },
+    {
+      "from": "lattis.fakturownia.invoice.request",
+      "to": "process:fakturownia-worker",
+      "kind": "queues"
+    },
+    {
+      "from": "process:fakturownia-worker",
+      "to": "external:fakturownia-api",
+      "kind": "outbound"
+    }
   ],
   "nodes": [
-    { "name": "lattis.fakturownia.invoice.request", "kind": "command", "inputSchema": {}, "outputSchema": {}, "idempotent": true },
-    { "name": "lattis.fakturownia.invoice.from-sale", "kind": "command", "inputSchema": {}, "outputSchema": {}, "idempotent": true },
-    { "name": "lattis.fakturownia.invoice.get", "kind": "query", "inputSchema": {}, "outputSchema": {}, "idempotent": true }
+    {
+      "name": "lattis.fakturownia.invoice.request",
+      "kind": "command",
+      "inputSchema": {},
+      "outputSchema": {},
+      "idempotent": true
+    },
+    {
+      "name": "lattis.fakturownia.invoice.from-sale",
+      "kind": "command",
+      "inputSchema": {},
+      "outputSchema": {},
+      "idempotent": true
+    },
+    {
+      "name": "lattis.fakturownia.invoice.get",
+      "kind": "query",
+      "inputSchema": {},
+      "outputSchema": {},
+      "idempotent": true
+    }
   ],
   "routes": [],
   "migrations": [
-    { "id": "fakturownia_001", "path": "migrations/001.sql", "mariadbPath": "migrations/001.mariadb.sql", "phase": "expand" },
-    { "id": "fakturownia_002", "path": "migrations/002.sql", "mariadbPath": "migrations/002.mariadb.sql", "phase": "expand" }
+    {
+      "id": "fakturownia_001",
+      "path": "migrations/001.sql",
+      "mariadbPath": "migrations/001.mariadb.sql",
+      "phase": "expand"
+    },
+    {
+      "id": "fakturownia_002",
+      "path": "migrations/002.sql",
+      "mariadbPath": "migrations/002.mariadb.sql",
+      "phase": "expand"
+    }
   ],
-  "license": { "identifier": "UNLICENSED" }
+  "license": {
+    "identifier": "MIT"
+  }
 }

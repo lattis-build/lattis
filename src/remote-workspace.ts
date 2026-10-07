@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { lstat, mkdir, readFile, readdir, realpath, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 
-const defaultRoots = ['packages/local', 'src', 'web', 'docs', 'migrations', 'lattis.config.json', 'package.json', 'tsconfig.json'];
+const defaultRoots = ['extensions', 'packages/local', 'src', 'web', 'docs', 'migrations', 'lattis.config.json', 'package.json', 'tsconfig.json'];
 const writableExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.json', '.md', '.css', '.html', '.sql', '.yaml', '.yml', '.svg']);
 const changing = new Set<string>();
 

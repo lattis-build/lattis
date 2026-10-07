@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "execution": "declarative-v1",
+  "name": "@lattis/content-preview",
+  "version": "0.1.0",
+  "coreCompatibility": "^0.3.0-alpha.1",
+  "description": "Read a content entry through Core authorization and the standard panel renderer.",
+  "license": "MIT",
+  "capabilities": { "invoke": ["lattis.content.get"] },
+  "nodes": [{
+    "name": "lattis.content-preview.get",
+    "kind": "query",
+    "action": "content.read",
+    "resourceType": "content",
+    "resource": { "kind": "input", "field": "id" },
+    "input": [{ "name": "id", "label": "Content ID", "type": "text", "required": true, "maxLength": 36 }],
+    "output": [
+      { "name": "id", "label": "Content ID", "type": "text", "required": true, "maxLength": 36 },
+      { "name": "title", "label": "Title", "type": "text", "required": false, "maxLength": 1000 }
+    ],
+    "steps": [{ "saveAs": "entry", "invoke": "lattis.content.get", "input": { "op": "input", "path": [] } }],
+    "result": { "op": "object", "fields": {
+      "id": { "op": "result", "name": "entry", "path": ["id"] },
+      "title": { "op": "result", "name": "entry", "path": ["title"] }
+    } }
+  }],
+  "ui": { "views": [{ "id": "preview", "title": "Content preview", "description": "Uses the application's existing content permissions.", "node": "lattis.content-preview.get" }] }
+}

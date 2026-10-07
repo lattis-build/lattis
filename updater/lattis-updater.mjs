@@ -7,6 +7,7 @@ import { open, mkdir, rename, unlink, lstat, readdir, realpath } from 'node:fs/p
 import { dirname, join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { distributionClient, protectedFile } from './lib/tuf-client.mjs';
+import { requireReview } from './lib/release-review.mjs';
 
 const hash = (data) => `sha256:${createHash('sha256').update(data).digest('hex')}`;
 function canonical(value) {
@@ -39,22 +40,28 @@ async function protectedDirectory(path) {
 async function policy() {
   const p = JSON.parse((await protectedFile('/etc/lattis/installation.json')).toString('utf8'));
   if (p.schemaVersion !== 1 || !/^[a-z0-9-]{1,100}$/.test(p.applicationId) || !/^[a-z0-9-]+$/.test(p.localPublisher) || p.allowDownloadedExecution !== false || !Number.isInteger(p.ownerThreshold) || p.ownerThreshold < 1 || p.ownerThreshold > 10 || !p.ownerKeys) throw new Error('Invalid installation policy');
+  if (p.edgeProtection?.mode !== 'blocking' || p.edgeProtection.originIsolated !== true || !/^sha256:[a-f0-9]{64}$/.test(p.edgeProtection.configurationDigest)) throw new Error('Protected blocking WAF and isolated origin policy required');
   await protectedDirectory(p.stateDirectory); await protectedDirectory(p.releaseDirectory);
   return p;
 }
 async function authorization(path, p) {
   const envelope = JSON.parse((await read(path, 10_000_000)).toString('utf8'));
   const m = envelope.signed;
-  if (!m || m.schemaVersion !== 2 || m.applicationId !== p.applicationId || m.localPublisher !== p.localPublisher || m.compatibility?.minimumUpdater !== 1 || !m.files || !m.platform || !Array.isArray(envelope.signatures) || envelope.signatures.length > 10) throw new Error('Invalid release authorization');
+  if (!m || m.schemaVersion !== 3 || m.applicationId !== p.applicationId || m.localPublisher !== p.localPublisher || m.compatibility?.minimumUpdater !== 2 || !m.files || !m.platform || !Array.isArray(envelope.signatures) || envelope.signatures.length > 10) throw new Error('Invalid release authorization');
   const accepted = new Set();
   for (const s of envelope.signatures) {
     const pem = p.ownerKeys[s.keyId]; if (!pem || accepted.has(s.keyId)) continue;
     const key = createPublicKey(pem);
     if (key.asymmetricKeyType !== 'ed25519' || hash(key.export({ type: 'spki', format: 'der' })) !== s.keyId) throw new Error('Invalid owner key');
-    if (verify(null, Buffer.from(`lattis.application-release.v2\n${canonical(m)}`), key, Buffer.from(s.signature, 'base64'))) accepted.add(s.keyId);
+    if (verify(null, Buffer.from(`lattis.application-release.v3\n${canonical(m)}`), key, Buffer.from(s.signature, 'base64'))) accepted.add(s.keyId);
   }
   if (accepted.size < p.ownerThreshold) throw new Error('Owner authorization threshold not met');
-  if (!Array.isArray(m.trustedModules) || m.trustedModules.some((v) => !relative(v).startsWith('packages/local/'))) throw new Error('Remote package execution is unavailable in phase 1');
+  if (!Array.isArray(m.trustedModules) || m.trustedModules.length || !Array.isArray(m.extensions) || m.extensions.length > 100) throw new Error('Only declarative local extensions may be activated in 0.3');
+  if (m.security?.profile !== 'controlled-v1' || m.security.ui !== 'declarative-v1' || m.security.execution !== 'data-only-v1' || m.security.reviewDigest !== m.files['lattis.review.json']?.digest) throw new Error('Controlled release and bound quality review required');
+  for (const extension of m.extensions) if (!relative(extension.path).startsWith('extensions/') || !extension.path.endsWith('.json') || extension.digest !== m.files[extension.path]?.digest || !extension.name?.startsWith(`@${p.localPublisher}/`)) throw new Error('Invalid extension identity');
+  if (m.extensions.length) {
+    if (!p.runner || p.runner.executablePath !== '/opt/lattis-runner/extension-runner.mjs' || typeof p.runner.socketPath !== 'string' || !p.runner.socketPath.startsWith('/') || !p.runner.socketPath.endsWith('.sock') || p.runner.digest !== m.files['node_modules/lattis/runner/extension-runner.mjs']?.digest || hash(await protectedFile(p.runner.executablePath)) !== p.runner.digest) throw new Error('Provision the exact authorized runner outside the application before deployment');
+  }
   if (!Array.isArray(m.migrations) || !Array.isArray(m.components) || m.components.some((v) => !['app','admin','geode','worker'].includes(v))) throw new Error('Invalid release components');
   const names = Object.keys(m.files); let total = 0;
   if (!names.length || names.length > 20000) throw new Error('Invalid release size');
@@ -111,6 +118,7 @@ async function stage(bundleFile, authorizationFile, p) {
     const handle = await open(path, 'wx', 0o444); try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
   }
   await checkFiles(temporary, release.manifest);
+  requireReview(JSON.parse((await read(join(temporary, 'lattis.review.json'), 100000)).toString('utf8')), release.manifest.files, release.manifest.core, release.manifest.configurationDigest, true, p.edgeProtection.configurationDigest);
   await rename(temporary, destination);
   await atomic(join(p.stateDirectory, 'authorizations', `${release.id.slice(7)}.json`), JSON.stringify(release.envelope), 0o644);
   await atomic(join(p.stateDirectory, 'journal.json'), JSON.stringify({ operation: 'stage', status: 'staged', releaseId: release.id, at: new Date().toISOString() }));
@@ -124,9 +132,11 @@ async function activate(id, p) {
   // after stopping all runtime processes and completing approved DB operations.
   const receipt = JSON.parse((await protectedFile(join(p.stateDirectory, 'maintenance', `${id.slice(7)}.json`))).toString('utf8'));
   if (receipt.releaseId !== id || receipt.runtimeStopped !== true || receipt.previousRelease !== r.manifest.compatibility.previousRelease || typeof receipt.backupReference !== 'string' || !receipt.backupReference || !['postgres','mariadb'].includes(receipt.databaseDialect) || !Array.isArray(receipt.appliedMigrations)) throw new Error('Protected maintenance and backup receipt required');
+  if (receipt.edgeProtection?.mode !== 'blocking' || receipt.edgeProtection.originIsolated !== true || receipt.edgeProtection.configurationDigest !== p.edgeProtection.configurationDigest) throw new Error('Operator must attest the configured blocking WAF and isolated origins');
   for (const m of r.manifest.migrations.filter((v) => v.dialect === receipt.databaseDialect)) if (!receipt.appliedMigrations.some((v) => v.id === m.id && v.digest === m.digest && v.phase === m.phase)) throw new Error('Approved migration receipt missing');
   await officialPlatform(r.manifest, p);
   await checkFiles(join(p.releaseDirectory, id.slice(7)), r.manifest);
+  requireReview(JSON.parse((await read(join(p.releaseDirectory, id.slice(7), 'lattis.review.json'), 100000)).toString('utf8')), r.manifest.files, r.manifest.core, r.manifest.configurationDigest, true, p.edgeProtection.configurationDigest);
   await atomic(join(p.stateDirectory, 'journal.json'), JSON.stringify({ operation: 'activate', status: 'committing', releaseId: id, previousRelease: await active(p), at: new Date().toISOString() }));
   await atomic(join(p.stateDirectory, 'active.json'), JSON.stringify({ releaseId: id }), 0o644);
   await atomic(join(p.stateDirectory, 'journal.json'), JSON.stringify({ operation: 'activate', status: 'active-awaiting-service-health', releaseId: id, at: new Date().toISOString() }));
@@ -139,6 +149,7 @@ async function run(component, p) {
   const r = await authorization(join(p.stateDirectory, 'authorizations', `${id.slice(7)}.json`), p);
   if (r.id !== id || !r.manifest.components.includes(component)) throw new Error('Runtime component not authorized');
   const directory = join(p.releaseDirectory, id.slice(7)); await checkFiles(directory, r.manifest);
+  requireReview(JSON.parse((await read(join(directory, 'lattis.review.json'), 100000)).toString('utf8')), r.manifest.files, r.manifest.core, r.manifest.configurationDigest, false, p.edgeProtection.configurationDigest);
   const cli = join(directory, 'node_modules/lattis/bin/lattis.js');
   const child = spawn(process.execPath, [cli, component === 'app' ? 'serve-app' : component === 'admin' ? 'serve-admin' : 'serve-geode'], { cwd: directory, env: { ...process.env, NODE_ENV: 'production' }, stdio: 'inherit', shell: false });
   for (const signal of ['SIGTERM','SIGINT']) process.on(signal, () => child.kill(signal));
@@ -146,10 +157,17 @@ async function run(component, p) {
   child.on('exit', (code) => { process.exitCode = code ?? 1; });
   return undefined;
 }
+async function integrity(p) {
+  const id=await active(p); if (!/^sha256:[a-f0-9]{64}$/.test(id ?? '')) throw new Error('No active release');
+  const r=await authorization(join(p.stateDirectory,'authorizations',`${id.slice(7)}.json`),p);
+  if (r.id!==id) throw new Error('Active authorization mismatch');
+  await checkFiles(join(p.releaseDirectory,id.slice(7)),r.manifest);
+  return { releaseId:id,integrity:'matches-authorized-files',scope:'files-only-not-runtime-or-vulnerability-assurance' };
+}
 const [command, ...args] = process.argv.slice(2);
 try {
   const p = await policy();
   if (command !== 'run' && process.getuid?.() !== 0) throw new Error('Updater mutations require the protected deployment account');
-  const result = command === 'run' ? await run(args[0], p) : await locked(p, () => command === 'stage' ? stage(args[0], args[1], p) : command === 'activate' ? activate(args[0], p) : Promise.reject(new Error('Commands: stage BUNDLE AUTHORIZATION; activate RELEASE_ID; run app|admin|geode')));
+  const result = command === 'run' ? await run(args[0], p) : await locked(p, () => command === 'stage' ? stage(args[0], args[1], p) : command === 'activate' ? activate(args[0], p) : command === 'integrity' ? integrity(p) : Promise.reject(new Error('Commands: stage BUNDLE AUTHORIZATION; activate RELEASE_ID; run app|admin|geode; integrity')));
   if (result) process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 1; }

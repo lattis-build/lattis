@@ -8,6 +8,9 @@ import { lockSchema } from './registry-client.js';
 import { distributionClient } from '../updater/lib/tuf-client.mjs';
 import { boundedFile, insideFile, relativePath, exclusive } from './security-files.js';
 import { approvalBytes, fileSchema, releaseSchema, releaseDigest, releaseEnvelopeSchema, type ReleaseManifest } from './release-contract.js';
+import { readExtensions } from './extensions.js';
+import { requireReview, reviewedInventoryDigest, REVIEW_CATEGORIES } from '../updater/lib/release-review.mjs';
+import { LATTIS_VERSION } from './version.js';
 
 export const platformSchema = z.object({ schemaVersion: z.literal(1), version: z.string(), files: z.record(z.string(), fileSchema) }).strict();
 const forbidden = /(^|\/)(\.git|\.lattis|\.env(?:\..*)?|\.npmrc|\.ssh|.*\.(?:pem|key|p12|pfx))($|\/)/i;
@@ -36,7 +39,13 @@ export async function prepareRelease(workspace: string, assembledDirectory: stri
   const directory = resolve(assembledDirectory);
   const config = await readProject(directory);
   const lock = lockSchema.parse(JSON.parse((await boundedFile(join(directory, 'lattis.lock'), 5_000_000)).toString('utf8')));
+  if (lock.core !== LATTIS_VERSION) throw new Error('Prepare a release using its exact Core version');
   const files = await inventory(directory);
+  if (config.trustedModules.length) throw new Error('Migrate TypeScript extensions to declarative extensions before production release');
+  const extensions = (await readExtensions(directory)).map(({ path, digest: sha, definition }) => ({ path, digest: sha, name: definition.name, version: definition.version }));
+  const configurationDigest = digest(Buffer.from(canonicalJson(config)));
+  const review = JSON.parse((await insideFile(directory, 'lattis.review.json', 100000)).toString('utf8'));
+  requireReview(review, files, lock.core, configurationDigest);
   const state = join(workspace, '.lattis', 'platform-distribution');
   const platform = await exclusive(join(state, 'refresh.lock'), async () => {
     const client = await distributionClient({ stateDirectory: state, channel: 'updates', development: process.env.LATTIS_REGISTRY_MODE === 'development' });
@@ -68,16 +77,32 @@ export async function prepareRelease(workspace: string, assembledDirectory: stri
       migrations.push({ id: migration.id, path: relative, digest: digest(bytes), dialect, phase: migration.phase, reversible: false, scope: config.applicationId });
     }
   }
-  const manifest = releaseSchema.parse({ schemaVersion: 2, applicationId: config.applicationId, localPublisher: config.localPublisher,
+  const manifest = releaseSchema.parse({ schemaVersion: 3, applicationId: config.applicationId, localPublisher: config.localPublisher,
     core: lock.core, coreArtifact: null, platform, files, packages: lock.packages, trustedModules: config.trustedModules.map((p) => p.replace(/^\.\//, '')), migrations,
-    components: config.releaseComponents, configurationDigest: digest(Buffer.from(canonicalJson(config))),
-    compatibility: { previousRelease: previousRelease ?? null, dataRollback: migrations.length ? 'forward-only' : 'compatible', minimumUpdater: 1 } });
+    extensions, security: { profile: 'controlled-v1', ui: 'declarative-v1', execution: 'data-only-v1', reviewDigest: files['lattis.review.json'].digest },
+    components: config.releaseComponents, configurationDigest,
+    compatibility: { previousRelease: previousRelease ?? null, dataRollback: migrations.length ? 'forward-only' : 'compatible', minimumUpdater: 2 } });
   const id = releaseDigest(manifest);
   const outputDirectory = join(workspace, '.lattis', 'releases');
   await mkdir(outputDirectory, { recursive: true, mode: 0o700 });
   const path = join(outputDirectory, `${id.slice(7)}.json`);
   await writeFile(path, JSON.stringify(manifest, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
   return { path, digest: id, status: 'candidate-awaiting-offline-authorization', migrations };
+}
+
+// Generates a pending record only. Does not run checks or approve a candidate.
+export async function reviewTemplate(directory: string, edgePolicyDigest: string, output: string) {
+  const root = resolve(directory);
+  const config = await readProject(root);
+  const lock = lockSchema.parse(JSON.parse((await boundedFile(join(root, 'lattis.lock'), 5_000_000)).toString('utf8')));
+  const files = await inventory(root);
+  const template = { schemaVersion: 1, decision: 'pending', core: lock.core,
+    configurationDigest: digest(Buffer.from(canonicalJson(config))), inventoryDigest: reviewedInventoryDigest(files), edgePolicyDigest,
+    reviewer: '', reviewedAt: null, expiresAt: null,
+    checks: REVIEW_CATEGORIES.map((category) => ({ category, status: 'pending', evidence: [] })),
+  };
+  await writeFile(output, JSON.stringify(template, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+  return { path: output, status: 'pending-no-checks-executed' };
 }
 
 export async function signRelease(descriptorPath: string, offlinePrivateKey: string) {

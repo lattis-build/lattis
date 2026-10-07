@@ -1,5 +1,7 @@
 # 04. Decyzje, źródła i przyszła weryfikacja
 
+**Aktualizacja 0.3:** przyjęto MIT dla istniejącego własnego kodu, z właścicielem #1 GROUP PROSTA SPÓŁKA AKCYJNA. Historyczne pytania o BSL/CLA nie są bieżącą decyzją. Model produktu i prawa do forków opisuje [dokument 16](16-licencja-i-model-produktu.md); ograniczenia wykonania i jakość — [dokument 15](15-kontrolowany-produkt-0.3.md).
+
 **Status:** decyzje oznaczone jako „uzgodnione” pochodzą z rozmowy z użytkownikiem. Rekomendacje zostały przyjęte roboczo do pierwszej implementacji po poleceniu „Przejdź do fazy 1”; stan kodu i ograniczenia opisuje [05 — Implementacja fazy 1](05-implementacja-fazy-1.md), a nowe ADR i backlog w [06 — Kompozycja i porty](06-kompozycja-porty-i-backlog.md). Stare RFC są źródłami historii projektu, nie instrukcjami obowiązującymi w tym planie.
 
 ## 1. Uzgodnione wymagania

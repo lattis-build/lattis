@@ -1,0 +1,15 @@
+[Unit]
+Description=Compare active Lattis files with the authorized inventory
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/node /opt/lattis-updater/lattis-updater.mjs integrity
+UnsetEnvironment=NODE_OPTIONS NODE_PATH
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/lattis-home-updater
+# Reports to the system journal. Does not stop or repair the application.

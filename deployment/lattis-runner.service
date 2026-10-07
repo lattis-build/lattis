@@ -1,0 +1,42 @@
+[Unit]
+Description=Lattis data-only extension expression runner
+Before=lattis-app.service lattis-admin.service
+
+[Service]
+Type=simple
+User=lattis-runner
+Group=lattis-runner
+RuntimeDirectory=lattis-runner
+RuntimeDirectoryMode=0750
+Environment=LATTIS_RUNNER_SOCKET=/run/lattis-runner/runner.sock
+UnsetEnvironment=NODE_OPTIONS NODE_PATH
+ExecStart=/usr/bin/node --max-old-space-size=64 /opt/lattis-runner/extension-runner.mjs
+Restart=on-failure
+UMask=0007
+NoNewPrivileges=true
+CapabilityBoundingSet=
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+InaccessiblePaths=/etc/lattis /srv /var/lib
+ReadWritePaths=/run/lattis-runner
+MemoryMax=128M
+TasksMax=16
+CPUQuota=50%
+LimitNOFILE=128
+TimeoutStopSec=10
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

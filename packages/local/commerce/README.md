@@ -1,5 +1,7 @@
 # Commerce: opcjonalna tożsamość sprzedaży
 
+> Lattis 0.3: ta integracja TypeScript jest dostępna wyłącznie w środowisku deweloperskim. Nie może być aktywowana w kontrolowanym wydaniu produkcyjnym. Licencja: MIT. Migracja do oddzielnej usługi lub wbudowanej, ocenionej integracji Core jest osobnym zadaniem.
+
 `@lattis/commerce` dodaje wspólny identyfikator `saleId` (UUID) dla zamówienia lub sprzedaży. Instaluj go tylko w aplikacjach, które prowadzą sprzedaż. Core pozostaje neutralny wobec produktów, koszyka, płatności i faktur. Inne zaufane Nodes mogą powiązać swoje rekordy z `saleId` przez `lattis.commerce.sale.link`.
 
 ## Podłączenie

@@ -1,10 +1,12 @@
-# Lattis 0.2.0-alpha.1
+# Lattis 0.3.0-alpha.1
 
-Headless fundament aplikacji: logowanie, uprawnienia, lokalne Nodes i Shards, katalog Geode oraz MCP. Frontend wybiera aplikacja. Repo zawiera Core i narzędzia do rozpoczęcia własnego produktu; nie zawiera przykładowej aplikacji domenowej.
+Headless fundament aplikacji: logowanie, uprawnienia, treść, wideo, kontrolowane rozszerzenia, katalog Geode oraz MCP. Frontend wybiera aplikacja. Własny kod repozytorium jest dostępny na [MIT](LICENSE), właściciel: **#1 GROUP PROSTA SPÓŁKA AKCYJNA**.
 
-**Status głównego repo:** implementacja fazy 1 z opcjonalnym panelem administratora, zdalnym MCP aplikacji, treścią i adapterem MariaDB aplikacji. Nowy kod nie był uruchamiany ani weryfikowany na serwerze bazy; nie ma potwierdzonej gotowości produkcyjnej. Geode nadal używa PostgreSQL.
+**Status:** przygotowane źródła alpha. W tej zmianie nie uruchomiono testów, lintów, buildów, skanów ani usług. Kod nie ma potwierdzonej gotowości produkcyjnej. Aplikacja obsługuje adaptery PostgreSQL/MariaDB; Geode zachowuje PostgreSQL. Forge, AI i Cloud pozostają planem osobnych produktów.
 
-**Aktualny proces wydań:** [14 — Publiczne wydanie 0.2](docs/14-publiczne-wydanie-0.2.md). Zmiana niezgodna z 0.1: kwarantanna w Geode, podpisany katalog TUF, lock v2 jako kandydat, zakaz uruchamiania pobranych pakietów, autoryzowane pełne wydania oraz osobny aktualizator. Nie utworzono jeszcze oficjalnych kotwic zaufania ani publicznej instancji. Kod pozostaje nieweryfikowany.
+**Aktualny proces wydań:** [15 — Kontrolowany produkt 0.3](docs/15-kontrolowany-produkt-0.3.md). Produkcyjne rozszerzenia są deklaracjami JSON; własny TS pozostaje deweloperski. Panel korzysta ze wspólnych formularzy, a pobranie z Geode nie uruchamia pakietu. Katalog v3 i descriptor wydania v3 wiążą dokładne wersje z oceną jakości. Dodano szablony WAF, runnera i monitorowania integralności. Nie wdrożono ich na serwerze i nie opublikowano kotwic ani podpisanej dystrybucji. Przykładowe oceny są `pending` i blokują aktywację.
+
+Zasady: [polityka produktu](PRODUCT_POLICY.md), [bezpieczeństwo i zgłoszenia](SECURITY.md), [licencja i zarabianie](docs/16-licencja-i-model-produktu.md), [zmiany i migracja](CHANGELOG.md).
 
 | Dokument | Zawartość |
 |---|---|
@@ -20,9 +22,11 @@ Headless fundament aplikacji: logowanie, uprawnienia, lokalne Nodes i Shards, ka
 | [10 — Architektura wideo](docs/10-architektura-wideo.md) | Niezależny od odtwarzacza kontrakt, pakowanie HLS/DASH, CMAF oraz granice DRM i znakowania śledczego. |
 | [09 — Audyt immudb](docs/09-immudb-audyt.md) | Opcjonalny rejestr odcisków zdarzeń audytu, kolejka i niezależna weryfikacja. |
 | [11 — Panel i zdalny MCP](docs/11-panel-i-zdalny-mcp.md) | Zdalna praca nad aplikacją, opcjonalny panel Lattis Admin i przygotowanie publicznego Geode. |
-| [12 — Geode: zaufanie i izolacja](docs/12-geode-zaufanie-i-izolacja.md) | Projekt zmian Core i Geode: autoryzacja pochodzenia, dopuszczenie konkretnych artefaktów, wydania aplikacji i izolacja szkodliwego kodu. Do implementacji. |
-| [13 — Aktualizacje całego Lattis](docs/13-architektura-aktualizacji-lattis.md) | Projekt niezależnego aktualizatora, autoryzowanych wydań platformy i aplikacji, migracji, aktywacji oraz odzyskiwania. Do implementacji. |
-| [14 — Publiczne wydanie 0.2](docs/14-publiczne-wydanie-0.2.md) | Wdrożenie Enhance, kotwice zaufania, narzędzia wydawnicze i ograniczenia implementacji alpha. |
+| [12 — Geode: zaufanie i izolacja](docs/12-geode-zaufanie-i-izolacja.md) | Historyczny projekt granic zaufania; bieżąca implementacja i jej ograniczenia są w dokumencie 15. |
+| [13 — Aktualizacje całego Lattis](docs/13-architektura-aktualizacji-lattis.md) | Historyczny projekt aktualizatora, migracji i odzyskiwania; aktualny proces opisuje dokument 15. |
+| [14 — Publiczne wydanie 0.2](docs/14-publiczne-wydanie-0.2.md) | Historyczny opis wdrożenia i kotwic. Kontrakty rozszerzeń i wydań zastępuje dokument 0.3. |
+| [15 — Kontrolowany produkt 0.3](docs/15-kontrolowany-produkt-0.3.md) | Deklaracje, runner, UI, WAF, ocena jakości, updater 2 i migracja. |
+| [16 — Licencja i model produktu](docs/16-licencja-i-model-produktu.md) | MIT, prawa do forków, oficjalny kanał i przyszłe Forge/AI/Cloud. |
 | [Commerce](packages/local/commerce/README.md) | Opcjonalny identyfikator sprzedaży, migawka nabywcy i pozycji, statusy oraz powiązania z innymi Nodes. |
 | [Paynow v3](packages/local/paynow/README.md) | Opcjonalny Node płatności z osobnym workerem i podpisanym odbiornikiem powiadomień. |
 | [Fakturownia](packages/local/fakturownia/README.md) | Opcjonalny Node faktur z szyfrowanym zleceniem i osobnym workerem. |
@@ -34,7 +38,8 @@ Headless fundament aplikacji: logowanie, uprawnienia, lokalne Nodes i Shards, ka
 - `wordpress/lattis-migrator/lattis-migrator.php` — wtyczka WP-CLI do przenoszenia danych, bez migracji frontendu.
 - `src/app-db.ts` — adapter bazy aplikacji PostgreSQL/MariaDB; Geode zachowuje własny adapter PostgreSQL.
 - `src/immudb-audit.ts` — opcjonalny eksport odcisków audytu do immudb z kolejką w bazie aplikacji.
-- `src/runtime.ts` — kontrakt zaufanych modułów i deklaracji tras.
+- `src/extension-contract.ts`, `src/extensions.ts`, `runner/` — deklaracje i osobny interpreter danych; `src/node-executor.ts` — broker panelu.
+- `src/runtime.ts` — ładowanie deklaracji; importy własnych modułów TS i trasy Shards wyłącznie w rozwoju.
 - `src/geode-server.ts` — centralne Geode HTTP i zdalny MCP Streamable HTTP.
 - `src/local-mcp.ts` — lokalny MCP `stdio` dla repo aplikacji.
 - `src/remote-mcp.ts` — opcjonalny MCP aplikacji na serwerze; `src/admin-server.ts` — opcjonalny panel właściciela.
@@ -43,6 +48,7 @@ Headless fundament aplikacji: logowanie, uprawnienia, lokalne Nodes i Shards, ka
 - `updater/` — osobny pakiet aktualizatora i launchera; polityka poza aplikacją.
 - `tools/offline-repository.ts` — narzędzia do przygotowania i podpisywania metadanych na stacji wydawniczej.
 - `src/project-migrations.ts` — migracje danych własnej aplikacji, oddzielone od Core i auth.
+- `deployment/` — niewdrożone szablony usług, WAF i ocen; nie są potwierdzeniem działania ochrony.
 
 ## Zasada pracy
 

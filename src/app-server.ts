@@ -19,6 +19,8 @@ import { authorize, bootstrapOwner, type Principal } from './authorization.js';
 import { loadLocalModules, type NodeDefinition } from './runtime.js';
 import { DatabaseVaultSecrets, DevelopmentEnvSecrets, ExternalSecretProvider, SecretReferences } from './secrets.js';
 import { ZodError, type ZodType } from 'zod';
+import { httpLogger, registerHttpPolicy } from './http-policy.js';
+import { requireExtensionGraph } from './extensions.js';
 
 import { requireRuntimeComponent } from './production-release.js';
 await requireRuntimeComponent('app');
@@ -29,7 +31,8 @@ const db = appDatabase(config.databaseUrl);
 const auditLedger = optionalImmuDbAuditBridge(db);
 const auth = createAuth(db);
 const wordpressPasswords = new WordPressPasswordBridge(db, auth);
-const app = Fastify({ logger: true, bodyLimit: 1_000_000, trustProxy: config.trustedProxies.length ? config.trustedProxies : false });
+const app = Fastify({ logger: httpLogger, bodyLimit: 1_000_000, trustProxy: config.trustedProxies.length ? config.trustedProxies : false });
+registerHttpPolicy(app, config.baseUrl);
 let draining = false;
 await app.register(cors, { origin: [config.baseUrl, ...config.trustedOrigins], credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], allowedHeaders: ['content-type', 'idempotency-key', 'authorization', 'x-requested-with', 'range'], exposedHeaders: ['accept-ranges', 'content-range', 'content-length'] });
 const { nodes, routes } = await loadLocalModules(db.dialect);
@@ -37,6 +40,7 @@ const nodeNames = new Set(nodes.map((node) => node.name));
 const content = new ContentStore(db, nodeNames, new Set(routes.map((route) => route.packageName)));
 for (const node of contentNodes(content)) { if (nodeNames.has(node.name)) throw new Error(`Reserved Node name: ${node.name}`); nodeNames.add(node.name); nodes.push(node); }
 for (const node of videoNodes()) { if (nodeNames.has(node.name)) throw new Error(`Reserved Node name: ${node.name}`); nodeNames.add(node.name); nodes.push(node); }
+await requireExtensionGraph(nodes);
 const secretProviders = { env: new DevelopmentEnvSecrets(), ...(process.env.LATTIS_SECRET_PROVIDER_URL && process.env.LATTIS_SECRET_PROVIDER_TOKEN ? { external: new ExternalSecretProvider(process.env.LATTIS_SECRET_PROVIDER_URL, process.env.LATTIS_SECRET_PROVIDER_TOKEN) } : {}), ...(process.env.LATTIS_VAULT_KEY ? { vault: new DatabaseVaultSecrets(db,process.env.LATTIS_VAULT_KEY) } : {}) };
 const secrets = new SecretReferences(db, secretProviders);
 async function appAudit(actor: string, action: string, resource: string, result: string, correlationId: string): Promise<void> {
@@ -48,7 +52,9 @@ function parsedOutput(schema: ZodType, value: unknown): unknown {
   return result.data;
 }
 type Client = Awaited<ReturnType<typeof db.connect>>;
-async function invokeLocal(name: string, rawInput: unknown, who: Principal | null, client: Client, rootKey: string | null, path: string[], correlationId: string): Promise<unknown> {
+type InvocationBudget = { remaining: number; deadline: number };
+async function invokeLocal(name: string, rawInput: unknown, who: Principal | null, client: Client, rootKey: string | null, path: string[], correlationId: string, budget: InvocationBudget): Promise<unknown> {
+  if (--budget.remaining < 0 || Date.now() > budget.deadline) throw new Error('Invocation budget exceeded');
   const target = nodes.find((entry) => entry.name === name);
   if (!target) throw new Error(`Node not found: ${name}`);
   if (path.includes(name) || path.length >= 8) throw new Error('Node invocation cycle or depth limit');
@@ -60,7 +66,7 @@ async function invokeLocal(name: string, rawInput: unknown, who: Principal | nul
   }
   if (target.kind === 'command' && !rootKey) throw new Error('Command invocation requires a transactional command or route');
   const nestedPath = [...path,name];
-  const context = nodeContext(target, who!, client, rootKey, nestedPath, correlationId);
+  const context = nodeContext(target, who!, client, rootKey, nestedPath, correlationId, budget);
   if (target.kind === 'query') return parsedOutput(target.output, await target.handler(context,input));
   const key = createHash('sha256').update(JSON.stringify({ rootKey, nestedPath })).digest('hex');
   await client.lock(`nested:${name}:${who!.id}:${key}`);
@@ -75,11 +81,14 @@ async function invokeLocal(name: string, rawInput: unknown, who: Principal | nul
   await client.query('INSERT INTO lattis_node_receipt (node_name,principal_id,idempotency_key,request_digest,response) VALUES ($1,$2,$3,$4,$5)', [name,who!.id,key,inputDigest,JSON.stringify(result)]);
   return result;
 }
-function nodeContext(node: NodeDefinition, who: Principal, client: Client, rootKey: string | null, path: string[], correlationId: string) {
+function nodeContext(node: NodeDefinition, who: Principal, client: Client, rootKey: string | null, path: string[], correlationId: string, budget: InvocationBudget = { remaining:64,deadline:Date.now()+15000 }) {
   return { db: client, principal: who, secrets: { get: (secretName: string) => {
     if (!node.declaredSecrets?.includes(secretName)) throw new Error('Secret not declared by Node');
     return secrets.resolveForPackage(secretName, node.packageName);
-  } }, invoke: (name: string, input: unknown) => invokeLocal(name,input,who,client,rootKey,path,correlationId) };
+  } }, invoke: (name: string, input: unknown) => {
+    if (node.kind==='query' && nodes.find((target) => target.name===name)?.kind==='command') throw new Error('A query cannot invoke a command');
+    return invokeLocal(name,input,who,client,rootKey,path,correlationId,budget);
+  } };
 }
 app.setErrorHandler((error, request, reply) => {
   if (error instanceof ZodError) return reply.code(400).send({ error: 'Invalid input', issues: error.issues.map((issue) => ({ path: issue.path, message: issue.message })) });
@@ -268,7 +277,7 @@ app.post('/api/nodes/:name/execute', async (request, reply) => {
   if (!who) return;
   if (node.kind === 'command') {
     const key = request.headers['idempotency-key'];
-    if (typeof key !== 'string' || key.length > 128) return reply.code(400).send({ error: 'Idempotency-Key required' });
+    if (typeof key !== 'string' || !key || key.length > 128) return reply.code(400).send({ error: 'Idempotency-Key required' });
     const inputDigest = createHash('sha256').update(JSON.stringify(input)).digest('hex');
     const client = await db.connect();
     let committed = false;
@@ -299,6 +308,7 @@ app.post('/api/nodes/:name/execute', async (request, reply) => {
 
 for (const route of routes) {
   app.route({ method: route.method, url: route.url, async handler(request, reply) {
+    const budget: InvocationBudget = { remaining:64,deadline:Date.now()+15000 };
     if (route.method !== 'GET' && !sameOrigin(request, reply)) return;
     const input = route.input.parse({ params: request.params ?? {}, query: request.query ?? {}, body: request.body });
     const who = route.access.kind === 'public'
@@ -312,7 +322,7 @@ for (const route of routes) {
         if (!route.declaredSecrets?.includes(name)) throw new Error('Secret not declared by Shard route');
         return secrets.resolveForPackage(name, route.packageName);
       } },
-      invoke: (name: string, input: unknown) => invokeLocal(name,input,who,client,rootKey,[`route:${route.packageName}:${route.name}`],request.id),
+      invoke: (name: string, input: unknown) => invokeLocal(name,input,who,client,rootKey,[`route:${route.packageName}:${route.name}`],request.id,budget),
     });
     if (route.method === 'GET') {
       const client = await db.connect();

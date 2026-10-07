@@ -1,12 +1,13 @@
 [Unit]
 Description=Lattis application through protected release launcher
-After=network-online.target
-Wants=network-online.target
+After=network-online.target lattis-runner.service
+Wants=network-online.target lattis-runner.service
 
 [Service]
 Type=simple
 User=lattis-runtime
 Group=lattis-runtime
+SupplementaryGroups=lattis-runner
 Environment=NODE_ENV=production
 EnvironmentFile=/etc/lattis/runtime.env
 UnsetEnvironment=NODE_OPTIONS NODE_PATH
@@ -15,6 +16,16 @@ Restart=on-failure
 TimeoutStopSec=45
 KillMode=control-group
 NoNewPrivileges=true
+CapabilityBoundingSet=
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true

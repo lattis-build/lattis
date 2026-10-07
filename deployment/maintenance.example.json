@@ -4,5 +4,10 @@
   "runtimeStopped": true,
   "databaseDialect": "postgres",
   "backupReference": "REPLACE_WITH_ACTUAL_RESTORABLE_BACKUP_REFERENCE",
-  "appliedMigrations": []
+  "appliedMigrations": [],
+  "edgeProtection": {
+    "configurationDigest": "sha256:REPLACE_WITH_REVIEWED_EDGE_CONFIGURATION_DIGEST",
+    "mode": "blocking",
+    "originIsolated": true
+  }
 }

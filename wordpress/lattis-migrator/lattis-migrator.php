@@ -2,7 +2,9 @@
 /**
  * Plugin Name: Lattis Migrator
  * Description: Sends WordPress users, media files, and content to Lattis from WP-CLI.
- * Version: 0.2.0
+ * Version: 0.3.0-alpha.1
+ * License: MIT
+ * License URI: https://opensource.org/license/mit
  * Requires PHP: 7.4
  */
 

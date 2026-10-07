@@ -1,6 +1,6 @@
 {
   "name": "lattis",
-  "version": "0.2.0-alpha.1",
+  "version": "0.3.0-alpha.1",
   "private": true,
   "type": "module",
   "bin": {
@@ -23,7 +23,15 @@
     "openapi",
     ".env.example",
     "updater/lib",
-    "deployment"
+    "deployment",
+    "runner",
+    "examples/extensions",
+    "LICENSE",
+    "SECURITY.md",
+    "PRODUCT_POLICY.md",
+    "CHANGELOG.md",
+    "docs/15-kontrolowany-produkt-0.3.md",
+    "docs/16-licencja-i-model-produktu.md"
   ],
   "engines": {
     "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
@@ -62,5 +70,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/lattis-build/lattis.git"
-  }
+  },
+  "license": "MIT"
 }

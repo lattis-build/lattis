@@ -16,6 +16,9 @@ import { videoNodes } from './video-nodes.js';
 import { manifestSchema } from './manifest.js';
 import { projectFile, readProject } from './project.js';
 import { DatabaseVaultSecrets } from './secrets.js';
+import { extensionNodes, readExtensions, requireExtensionGraph } from './extensions.js';
+import { controlledExecutor, NodeExecutionError } from './node-executor.js';
+import { httpLogger, registerHttpPolicy } from './http-policy.js';
 
 import { requireRuntimeComponent } from './production-release.js';
 await requireRuntimeComponent('admin');
@@ -31,8 +34,15 @@ const geodeUrl = new URL(registryOrigin());
 const db = appDatabase(core.databaseUrl);
 const vault = new DatabaseVaultSecrets(db,vaultKey);
 const auth = createAuth(db,{ baseUrl:base.origin,signupOpen:false,trustedOrigins:[base.origin] });
-const content = new ContentStore(db,new Set(),new Set());
-const app = Fastify({ logger:true,bodyLimit:100_000,trustProxy:false });
+const controlledNames = new Set<string>();
+const content = new ContentStore(db,controlledNames,new Set());
+const app = Fastify({ logger:httpLogger,bodyLimit:100_000,trustProxy:core.trustedProxies.length ? core.trustedProxies : false });
+registerHttpPolicy(app, base.origin);
+const controlledNodes = [...contentNodes(content), ...videoNodes(), ...await extensionNodes()];
+for (const node of controlledNodes) controlledNames.add(node.name);
+if (new Set(controlledNodes.map((node) => node.name)).size !== controlledNodes.length) throw new Error('Duplicate controlled Node');
+await requireExtensionGraph(controlledNodes);
+const executeControlled = controlledExecutor(db, controlledNodes);
 
 app.addHook('onRequest',async (request,reply) => {
   if (request.headers.host !== base.host) { reply.code(404).send({ error:'Not found' }); return; }
@@ -41,6 +51,7 @@ app.addHook('onRequest',async (request,reply) => {
     .header('content-security-policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
 });
 app.setErrorHandler((error,request,reply) => {
+  if (error instanceof NodeExecutionError) return reply.code(error.status).send({ error:error.message });
   if (error instanceof ZodError) return reply.code(400).send({ error:'Invalid input',issues:error.issues.map((issue) => ({ path:issue.path,message:issue.message })) });
   if (error instanceof ContentError) return reply.code(error.status).send({ error:error.message });
   if (error instanceof Error && error.message === 'Secret version conflict') return reply.code(409).send({ error:error.message });
@@ -286,6 +297,9 @@ app.get('/api/admin/modules',async (request,reply) => {
       routes:manifest.routes.map((route) => ({ name:route.name,path:route.path })),
       dependencies:Object.keys(manifest.dependencies),connections:manifest.connections ?? [] });
   }
+  for (const { path, definition } of await readExtensions()) modules.push({ name:definition.name,kind:'declarative',version:definition.version,path,
+    nodes:definition.nodes.map(({ name,kind }) => ({ name,kind })),routes:[],dependencies:[],
+    connections:definition.nodes.flatMap((node) => node.steps.map((step) => ({ from:node.name,to:step.invoke,kind:'invokes' }))) });
   modules.unshift(...(['@lattis/content','@lattis/video'] as const).map((packageName) => ({
     name:packageName,kind:'core',version:'built-in',path:'Core',
     nodes:(packageName === '@lattis/content' ? contentNodes(content) : videoNodes()).map((item) => ({ name:item.name,kind:item.kind })),
@@ -307,6 +321,29 @@ app.get('/api/admin/modules',async (request,reply) => {
     if (!known.has(endpoint)) { known.add(endpoint); vertices.push({ id:endpoint,label:endpoint,kind:endpoint.startsWith('process:') ? 'process' : endpoint.startsWith('external:') ? 'external' : 'reference' }); }
   }
   return { modules,graph:{ vertices,edges } };
+});
+
+app.get('/api/admin/extensions', async (request, reply) => {
+  if (!await permitted(request,reply,'module.read','module')) return;
+  return (await readExtensions()).map(({ definition }) => ({ name:definition.name,version:definition.version,
+    views:definition.ui.views.map((view) => { const target=definition.nodes.find((node) => node.name===view.node)!; return { ...view,kind:target.kind,fields:target.input }; }) }));
+});
+app.post('/api/admin/extensions/execute', async (request, reply) => {
+  if (!sameOrigin(request,reply)) return;
+  const who=await permitted(request,reply,'panel.access','panel'); if (!who) return;
+  const body=z.object({ package:z.string().max(150),view:z.string().max(100),input:z.record(z.string(),z.unknown()) }).strict().parse(request.body);
+  const extension=(await readExtensions()).find(({ definition }) => definition.name===body.package)?.definition;
+  const target=extension?.ui.views.find((view) => view.id===body.view);
+  if (!target) return reply.code(404).send({ error:'Extension view not found' });
+  const key=request.headers['idempotency-key'];
+  return executeControlled(target.node,body.input,who,typeof key==='string' ? key : undefined,request.id);
+});
+app.get('/api/admin/security', async (request, reply) => {
+  if (!await permitted(request,reply,'module.read','module')) return;
+  return { version:(await import('./version.js')).LATTIS_VERSION, production:process.env.NODE_ENV==='production',
+    extensionExecution:'declarative-v1',downloadedExecution:false,customPanelScripts:false,
+    releaseProfile:'controlled-v1',verification:'not-established-by-this-endpoint',
+    waf:'external-service-requires-operator-evidence',review:'required-before-production-activation' };
 });
 app.get('/api/admin/geode',async (request,reply) => {
   if (!await permitted(request,reply,'module.read','module')) return;

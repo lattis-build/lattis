@@ -1,5 +1,7 @@
 # Fakturownia dla Lattis
 
+> Lattis 0.3: ta integracja TypeScript jest dostępna wyłącznie w środowisku deweloperskim. Nie może być aktywowana w kontrolowanym wydaniu produkcyjnym. Licencja: MIT. Migracja do oddzielnej usługi lub wbudowanej, ocenionej integracji Core jest osobnym zadaniem.
+
 Opcjonalny, lokalny Node do wystawiania faktur VAT w PLN. Node zapisuje zamiar wystawienia dokumentu w bazie aplikacji. Osobny worker komunikuje się z API Fakturowni. Kod nie jest aktywowany automatycznie i nie wykonuje kodu obcych pakietów w procesie Core.
 
 ## Podłączenie

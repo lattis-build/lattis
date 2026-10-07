@@ -1,5 +1,7 @@
 # Geode i Core: pochodzenie, dopuszczenie i izolacja pakietów
 
+> Dokument opisuje wcześniejszą wersję. W 0.3 produkcyjne rozszerzenia TS są wyłączone; obowiązują deklaracje JSON, katalog i wydania v3 oraz updater 2. Aktualny proces i ograniczenia: [kontrolowany produkt 0.3](15-kontrolowany-produkt-0.3.md).
+
 > Część granic zaufania wdrożono w kodzie 0.2.0-alpha.1; dokładny stan i luki opisuje [dokument 14](14-publiczne-wydanie-0.2.md). Ten dokument określa szerszą architekturę docelową, a nie deklarację wykonania lub zweryfikowania wszystkich elementów.
 
 **Status: projekt architektury z 2026-10-07, do implementacji.** Wymaganiem jest odporność aplikacji na podmianę źródła i na szkodliwe zachowanie pakietu. Dokument nie potwierdza takich własności obecnego kodu. W tej pracy nie uruchomiono testów, buildów, lintów, skanów ani prób izolacji. Wybór konkretnych bibliotek TUF i środowiska wykonawczego pozostaje otwarty.

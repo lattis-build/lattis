@@ -6,5 +6,15 @@
   "stateDirectory": "/var/lib/lattis-home-updater",
   "ownerKeys": {},
   "ownerThreshold": 2,
-  "allowDownloadedExecution": false
+  "allowDownloadedExecution": false,
+  "edgeProtection": {
+    "configurationDigest": "sha256:REPLACE_WITH_REVIEWED_EDGE_CONFIGURATION_DIGEST",
+    "mode": "blocking",
+    "originIsolated": true
+  },
+  "runner": {
+    "socketPath": "/run/lattis-runner/runner.sock",
+    "executablePath": "/opt/lattis-runner/extension-runner.mjs",
+    "digest": "sha256:REPLACE_WITH_AUTHORIZED_PLATFORM_RUNNER_DIGEST"
+  }
 }

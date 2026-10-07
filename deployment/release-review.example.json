@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "decision": "pending",
+  "core": "0.3.0-alpha.1",
+  "reviewer": "",
+  "reviewedAt": null,
+  "expiresAt": null,
+  "configurationDigest": "PENDING_CANONICAL_PARSED_PROJECT_DIGEST",
+  "inventoryDigest": "PENDING_INVENTORY_EXCLUDING_LATTIS_REVIEW_JSON",
+  "edgePolicyDigest": "PENDING_OPERATOR_EDGE_CONFIGURATION_DIGEST",
+  "checks": [
+    { "category": "security", "status": "pending", "evidence": [] },
+    { "category": "compatibility", "status": "pending", "evidence": [] },
+    { "category": "ui", "status": "pending", "evidence": [] },
+    { "category": "dependencies", "status": "pending", "evidence": [] },
+    { "category": "recovery", "status": "pending", "evidence": [] },
+    { "category": "waf", "status": "pending", "evidence": [] },
+    { "category": "license", "status": "pending", "evidence": [] }
+  ]
+}

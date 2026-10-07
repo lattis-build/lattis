@@ -1,5 +1,7 @@
 # Publiczne wydanie 0.2.0-alpha.1
 
+> Dokument opisuje wcześniejszą wersję. W 0.3 produkcyjne rozszerzenia TS są wyłączone; obowiązują deklaracje JSON, katalog i wydania v3 oraz updater 2. Aktualny proces i ograniczenia: [kontrolowany produkt 0.3](15-kontrolowany-produkt-0.3.md).
+
 To wersja robocza po zmianie granic zaufania. Kod nie został uruchomiony, zbudowany, przetestowany ani poddany audytowi. Nie oznacza potwierdzonej odporności na szkodliwy kod ani gotowości do przyjmowania ruchu publicznego. Nie opublikowano paczki npm, kluczy zaufania, podpisanego katalogu ani działającej usługi.
 
 ## Co egzekwuje kod

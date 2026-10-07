@@ -1,6 +1,6 @@
 const byId = (id) => document.getElementById(id);
 const view = byId('view');
-const titles = { overview:'Overview',content:'Content',modules:'Nodes & Shards',geode:'Geode',users:'Users',media:'Media',sales:'Sales',forge:'Forge AI',settings:'Settings' };
+const titles = { overview:'Overview',content:'Content',modules:'Nodes & Shards',extensions:'Extensions',security:'Release & protection',geode:'Geode',users:'Users',media:'Media',sales:'Sales',forge:'Forge AI',settings:'Settings' };
 let current = 'overview';
 
 function node(tag, text, className) {
@@ -38,7 +38,7 @@ async function navigate(name) {
   current=name; byId('view-title').textContent=titles[name];
   document.querySelectorAll('#nav button').forEach((item) => item.classList.toggle('active',item.dataset.view===name));
   clear(); view.append(paragraph('Loading…'));
-  try { clear(); await ({ overview,content,modules,geode,users,media,sales,forge,settings })[name](); }
+  try { clear(); await ({ overview,content,modules,extensions,security,geode,users,media,sales,forge,settings })[name](); }
   catch(error) { clear(); showError(error); }
 }
 async function overview() {
@@ -145,7 +145,8 @@ async function modules() {
   view.append(list);
 }
 async function geode() {
-  const panel=card('Geode marketplace'),toolbar=node('form',undefined,'toolbar'),query=field('Search packages');
+  const panel=card('Geode catalog'),toolbar=node('form',undefined,'toolbar'),query=field('Search packages');
+  panel.append(paragraph('Catalog entries are discovery data. Downloads require a signed admission and do not enable package execution.'));
   query.input.placeholder='Search Nodes and Shards';
   toolbar.append(query.wrap,node('button','Search','primary')); panel.append(toolbar);
   const results=node('div',undefined,'rows'); panel.append(results); view.append(panel);
@@ -206,7 +207,57 @@ async function sales() {
 }
 async function forge() {
   const panel=card('Forge AI');
-  panel.append(paragraph('Forge is reserved for a future optional AI Node. No model credentials or AI actions are enabled by this panel.'));
+  panel.append(paragraph('Forge is a planned optional product for creating and reviewing applications. AI changes must use a development workspace and the same release approval process. No AI service is enabled here.'));
+  view.append(panel);
+}
+
+async function extensions() {
+  const packages=await api('/api/admin/extensions');
+  view.append(paragraph('Extensions use standard Lattis forms and actions. Package scripts, styles, advertising and arbitrary HTML are unavailable in this panel.'));
+  if (!packages.some((pkg) => pkg.views.length)) view.append(paragraph('No declarative extension views are registered.'));
+  for (const pkg of packages) for (const specification of pkg.views) {
+    const panel=card(specification.title),form=node('form'),inputs=new Map();
+    panel.append(paragraph(`${pkg.name} · ${pkg.version}`,'small muted'),paragraph(specification.description));
+    for (const descriptor of specification.fields) {
+      const type={text:'text',textarea:'textarea',integer:'number',boolean:'checkbox'}[descriptor.type];
+      if (!type) throw new Error('Unsupported extension field');
+      const control=field(descriptor.label,type);
+      control.input.required=descriptor.required && descriptor.type!=='boolean';
+      if (descriptor.type==='text' || descriptor.type==='textarea') control.input.maxLength=descriptor.maxLength ?? 4000;
+      if (descriptor.type==='integer') { control.input.step='1'; control.input.min=String(-Number.MAX_SAFE_INTEGER); control.input.max=String(Number.MAX_SAFE_INTEGER); }
+      if (descriptor.type==='boolean') control.input.className='inline-checkbox';
+      inputs.set(descriptor.name,{descriptor,input:control.input}); form.append(control.wrap);
+    }
+    const submit=node('button',specification.kind==='command' ? 'Apply' : 'Read','primary'); submit.type='submit';
+    const output=node('pre',undefined,'code'); let attempt;
+    form.append(submit);
+    formSubmit(form,async () => {
+      const values=Object.create(null);
+      for (const [name,{descriptor,input}] of inputs) {
+        if (descriptor.type==='boolean') values[name]=input.checked;
+        else if (input.value!=='' || descriptor.required) values[name]=descriptor.type==='integer' ? Number(input.value) : input.value;
+      }
+      const body=JSON.stringify({package:pkg.name,view:specification.id,input:values});
+      if (!attempt || attempt.body!==body) attempt={body,key:crypto.randomUUID()};
+      submit.disabled=true;
+      try {
+        const result=await api('/api/admin/extensions/execute',{method:'POST',body,headers:{'idempotency-key':attempt.key}});
+        output.textContent=JSON.stringify(result,null,2); attempt=undefined; notice('Action completed.');
+      } finally { submit.disabled=false; }
+    });
+    panel.append(form,output); view.append(panel);
+  }
+}
+
+async function security() {
+  const data=await api('/api/admin/security'),panel=card('Release and protection requirements');
+  panel.append(table(['Setting','Value'],[
+    ['Core',data.version],['Environment',data.production ? 'Production' : 'Development'],
+    ['Extension execution',data.extensionExecution],['Downloaded code execution','Disabled'],
+    ['Custom panel scripts','Disabled'],['Release profile',data.releaseProfile],
+    ['Production review','Required before activation'],['WAF','External service; operator evidence required']
+  ]));
+  panel.append(paragraph('This page describes enforced contracts and deployment requirements. It does not attest that the running host has passed security review or that its WAF is active.'));
   view.append(panel);
 }
 async function settings() {
@@ -260,7 +311,7 @@ async function settings() {
   const keyForm=node('form'),keyName=field('Key name'),days=field('Validity (days)','number','30');
   const scopeRow=node('div',undefined,'toolbar'); const checks=[];
   for (const [scope,label] of [['mcp-read:workspace','Read'],['mcp-write:workspace','Write'],['mcp-scaffold:workspace','Scaffold']]) {
-    const wrap=node('label',label),input=node('input'); input.type='checkbox'; input.checked=true; input.style.width='auto'; wrap.prepend(input); scopeRow.append(wrap); checks.push([scope,input]);
+    const wrap=node('label',label),input=node('input'); input.type='checkbox'; input.checked=scope==='mcp-read:workspace'; input.className='inline-checkbox'; wrap.prepend(input); scopeRow.append(wrap); checks.push([scope,input]);
   }
   keyForm.append(keyName.wrap,days.wrap,scopeRow,node('button','Create MCP key','primary'));
   const oneTime=node('pre',undefined,'code');

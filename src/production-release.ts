@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { digest } from './manifest.js';
 import { boundedFile, insideFile } from './security-files.js';
 import { installationPolicySchema, verifyRelease, releaseDigest, type ReleaseManifest } from './release-contract.js';
+import { requireReview } from '../updater/lib/release-review.mjs';
 
 export const INSTALLATION_POLICY_PATH = '/etc/lattis/installation.json';
 let verified: { root: string; manifest: ReleaseManifest } | null = null;
@@ -54,6 +55,7 @@ export async function productionRelease(): Promise<ReleaseManifest | null> {
   }
   await walk(root);
   if (found.size !== Object.keys(manifest.files).length) throw new Error('Authorized production files are missing');
+  requireReview(JSON.parse((await insideFile(root, 'lattis.review.json', 100000)).toString('utf8')), manifest.files, manifest.core, manifest.configurationDigest, false, policy.edgeProtection.configurationDigest);
   verified = { root, manifest };
   return manifest;
 }

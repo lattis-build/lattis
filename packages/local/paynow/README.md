@@ -1,5 +1,7 @@
 # Paynow v3 dla Lattis
 
+> Lattis 0.3: ta integracja TypeScript jest dostępna wyłącznie w środowisku deweloperskim. Nie może być aktywowana w kontrolowanym wydaniu produkcyjnym. Licencja: MIT. Migracja do oddzielnej usługi lub wbudowanej, ocenionej integracji Core jest osobnym zadaniem.
+
 Opcjonalny lokalny Node do jednorazowych płatności przekierowujących w PLN. Kod zapisuje zlecenie w bazie aplikacji, a osobny proces tworzy płatność w Paynow. Odbiornik powiadomień działa poza Core. W fazie 1 żaden kod obcego wydawcy nie jest wykonywany w procesie aplikacji.
 
 ## Aktywacja w aplikacji

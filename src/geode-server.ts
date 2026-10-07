@@ -9,6 +9,7 @@ import { z, ZodError } from 'zod';
 import { geodeConfig } from './config.js';
 import { pool } from './db.js';
 import { Geode, GeodeError, type GeodeActor } from './geode.js';
+import { httpLogger, registerHttpPolicy } from './http-policy.js';
 
 import { requireRuntimeComponent } from './production-release.js';
 await requireRuntimeComponent('geode');
@@ -16,7 +17,8 @@ await requireRuntimeComponent('geode');
 const config = geodeConfig();
 const db = pool(config.databaseUrl);
 const geode = new Geode(db, config.artifactDir);
-const app = Fastify({ logger: true, bodyLimit: 7_000_000, trustProxy: false });
+const app = Fastify({ logger: httpLogger, bodyLimit: 7_000_000, trustProxy: false });
+registerHttpPolicy(app, config.baseUrl);
 
 function bearer(value: string | undefined): string | undefined {
   return /^Bearer [A-Za-z0-9._~-]+$/.test(value ?? '') ? value!.slice(7) : undefined;
@@ -42,7 +44,7 @@ app.get('/health/ready', async (_request, reply) => {
   try { await db.query('SELECT 1'); return { status: 'ready' }; }
   catch { return reply.code(503).send({ status: 'not-ready' }); }
 });
-app.get('/version', async () => ({ geode: LATTIS_VERSION, contract: 2 }));
+app.get('/version', async () => ({ geode: LATTIS_VERSION, contract: 3 }));
 app.get('/openapi.json', async () => JSON.parse(await (await import('node:fs/promises')).readFile(new URL('../openapi/geode.json', import.meta.url), 'utf8')));
 
 app.get('/v1/packages', async (request, reply) => {

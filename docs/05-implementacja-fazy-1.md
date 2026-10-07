@@ -1,5 +1,7 @@
 # 05. Pierwsza aplikacja na Lattis
 
+> Dokument opisuje wcześniejszą wersję. W 0.3 produkcyjne rozszerzenia TS są wyłączone; obowiązują deklaracje JSON, katalog i wydania v3 oraz updater 2. Aktualny proces i ograniczenia: [kontrolowany produkt 0.3](15-kontrolowany-produkt-0.3.md).
+
 > Aktualizacja 0.2.0-alpha.1: bieżący kontrakt instalacji i wdrożenia opisuje [dokument 14](14-publiczne-wydanie-0.2.md). Poniższe przykłady 0.1 zachowano jako kontekst rozwoju; nie są aktualną instrukcją wdrożenia produkcyjnego. Lock v1, dowolny GEODE_BASE_URL, edycja produkcyjnego workspace przez MCP i stary release:prepare nie należą do nowego procesu.
 
 **Stan głównego repo:** Lattis ma kod Core, CLI, Geode, MCP oraz adaptery PostgreSQL i MariaDB dla bazy aplikacji. W tym repo nie uruchomiono testów, kompilacji, skanów ani wdrożenia; obsługa MariaDB nie została potwierdzona na docelowym serwerze. Geode nadal używa PostgreSQL. Poniższa ścieżka nie jest potwierdzeniem gotowości produkcyjnej. Model treści i ograniczenia adapterów opisuje [07 — Treść i bazy](07-tresc-i-bazy.md), a pozostałe luki [06 — Kompozycja i porty](06-kompozycja-porty-i-backlog.md).

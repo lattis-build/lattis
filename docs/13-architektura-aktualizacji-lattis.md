@@ -1,5 +1,7 @@
 # Aktualizacje całego Lattis: zaufanie, wdrożenie i odzyskiwanie
 
+> Dokument opisuje wcześniejszą wersję. W 0.3 produkcyjne rozszerzenia TS są wyłączone; obowiązują deklaracje JSON, katalog i wydania v3 oraz updater 2. Aktualny proces i ograniczenia: [kontrolowany produkt 0.3](15-kontrolowany-produkt-0.3.md).
+
 > Część granic zaufania wdrożono w kodzie 0.2.0-alpha.1; dokładny stan i luki opisuje [dokument 14](14-publiczne-wydanie-0.2.md). Ten dokument określa szerszą architekturę docelową, a nie deklarację wykonania lub zweryfikowania wszystkich elementów.
 
 **Status: projekt architektury z 2026-10-07, do implementacji.** Rozszerza [12 — Geode: zaufanie i izolacja](12-geode-zaufanie-i-izolacja.md) na cały system: Core, Auth, Admin, MCP, brokera, runnerów, workers, pakiety, frontend aplikacji, migracje i sam aktualizator. Dokument nie opisuje istniejącego mechanizmu aktualizacji ani potwierdzonej odporności. Nie wykonano testów, buildów, lintów, skanów, migracji, wdrożeń ani innych weryfikacji.
