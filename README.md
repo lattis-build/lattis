@@ -20,7 +20,15 @@ Application databases can use PostgreSQL or MariaDB. Geode is a separately maint
 
 ## Getting started
 
-The current version is **0.4.0-alpha.1**. The npm package and signed production distribution are not published yet; use a source checkout with repository access. Use Node.js matching `engines.node` in [package.json](package.json), npm and an existing application database.
+The current alpha version is **0.4.0-alpha.3**. npm prereleases use the `alpha` tag. Use Node.js matching `engines.node` in [package.json](package.json), npm and an existing application database.
+
+Create an application with the pinned CLI release:
+
+```sh
+npx --yes --ignore-scripts lattis@0.4.0-alpha.3 install ./my-app
+```
+
+This starts the interactive installer. To inspect the source or contribute, use a checkout instead:
 
 ```sh
 git clone --depth 1 https://github.com/lattis-build/lattis.git
@@ -99,7 +107,13 @@ The [deployment directory](deployment) contains templates for the application, A
 
 The [separate updater](updater) stages and activates authorized application releases. Geode uses its own service artifact and deployment process. Neither service requires a Git checkout on the production host.
 
-This alpha has not been validated for production use. Source changes in 0.4 have not been tested or built. Signed artifacts establish provenance and file integrity; they do not guarantee the absence of vulnerabilities. Validate deployment templates on the target infrastructure before public use.
+The public website and Geode run Core 0.4.0-alpha.2 after targeted deployment checks, including PostgreSQL restore, HTTPS, blocking WAF and signature rejection. That deployment review does not cover every installation or all features of 0.4. The npm 0.4.0-alpha.3 release is a development distribution; an official platform inventory for production activation of this version must be published separately. No comprehensive security, accessibility or compatibility audit has been completed. Signed artifacts establish provenance and file integrity; they do not guarantee the absence of vulnerabilities.
+
+## Release channels and trust
+
+Use an exact version for reproducible setup. The `alpha` npm tag points to the latest prerelease; it does not designate a stable production version. npm bootstrap installs CLI code and its dependencies, so trust in that initial installation depends on the npm account, registry and independently reviewed source. Later Geode downloads and production activation use the separate TUF and owner-authorization mechanisms described above.
+
+The [bootstrap roots](deployment/trust) contain public keys only. An operator must provision them through a trusted channel together with the protected registry policies. Production distribution URLs cannot be changed through application settings. Geode packages remain download-only in phase 1, and the optional offline signing tool is included at `tools/offline-repository.ts`.
 
 ## License
 

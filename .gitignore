@@ -31,3 +31,6 @@ release-bundles/
 
 # Independently versioned local services
 /services/
+
+# Owner-specific infrastructure and deployment evidence stay local.
+/deployment/scaleway/

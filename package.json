@@ -1,7 +1,6 @@
 {
   "name": "lattis",
-  "version": "0.4.0-alpha.1",
-  "private": true,
+  "version": "0.4.0-alpha.3",
   "type": "module",
   "bin": {
     "lattis": "./bin/lattis.js"
@@ -24,10 +23,16 @@
     "web",
     "openapi",
     "runner",
-    "updater/lib",
-    "deployment",
+    "updater",
+    "deployment/*.service",
+    "deployment/*.timer",
+    "deployment/*.example.json",
+    "deployment/waf",
+    "deployment/trust",
+    "tools/offline-repository.ts",
     ".env.example",
     "README.md",
+    "PUBLISHING.md",
     "LICENSE"
   ],
   "engines": {
@@ -68,5 +73,15 @@
     "url": "https://github.com/lattis-build/lattis.git"
   },
   "license": "MIT",
-  "description": "A composable headless foundation for web applications with authentication, authorization and controlled extensions."
+  "description": "A composable headless foundation for web applications with authentication, authorization and controlled extensions.",
+  "homepage": "https://lattis.build",
+  "bugs": {
+    "url": "https://github.com/lattis-build/lattis/issues"
+  },
+  "keywords": ["lattis", "headless", "cms", "content", "authentication", "geode"],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "alpha"
+  }
 }

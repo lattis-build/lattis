@@ -79,7 +79,10 @@ export class ContentStore {
     return this.get(id, client);
   }
   async list(type: string | undefined, published: boolean, limit: number, after?: string) {
-    const rows = await this.db.query<ContentRow>(`SELECT * FROM lattis_content WHERE ($1 IS NULL OR type_key=$1) AND ($2=0 OR status='published') AND ($3 IS NULL OR id>$3) ORDER BY id LIMIT $4`, [type ?? null,published ? 1 : 0,after ?? null,limit]);
+    // PostgreSQL must know the parameter type even when the null branch is first.
+    const typeParameter = this.db.dialect === 'postgres' ? '$1::text' : '$1';
+    const afterParameter = this.db.dialect === 'postgres' ? '$3::uuid' : '$3';
+    const rows = await this.db.query<ContentRow>(`SELECT * FROM lattis_content WHERE (${typeParameter} IS NULL OR type_key=${typeParameter}) AND ($2=0 OR status='published') AND (${afterParameter} IS NULL OR id>${afterParameter}) ORDER BY id LIMIT $4`, [type ?? null,published ? 1 : 0,after ?? null,limit]);
     return rows.rows.map(normalized);
   }
   async publicContent(content: NonNullable<Awaited<ReturnType<ContentStore['get']>>>) {
