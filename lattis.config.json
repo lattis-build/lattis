@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "trustedModules": [],
+  "trustedPublishers": {},
+  "migrations": [],
+  "applicationId": "lattis-core-workspace",
+  "localPublisher": "lattis",
+  "releaseComponents": [
+    "app",
+    "admin"
+  ]
+}

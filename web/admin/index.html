@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lattis Admin</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+  <div id="login" class="login-wrap" hidden>
+    <form id="login-form" class="login-card">
+      <span class="eyebrow">LATTIS · INSTANCE CONTROL</span>
+      <h1>Sign in to your workspace</h1>
+      <p>Use a verified Lattis owner or administrator account.</p>
+      <label>Email<input name="email" type="email" autocomplete="username" required></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit" class="primary">Sign in</button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </div>
+  <div id="shell" class="shell" hidden>
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">L</span><div><strong>Lattis</strong><small>Instance admin</small></div></div>
+      <nav id="nav" aria-label="Admin sections">
+        <button data-view="overview" class="active">Overview</button>
+        <button data-view="content">Content</button>
+        <button data-view="modules">Nodes &amp; Shards</button>
+        <button data-view="geode">Geode</button>
+        <button data-view="users">Users</button>
+        <button data-view="media">Media</button>
+        <button data-view="sales">Sales</button>
+        <button data-view="forge">Forge AI</button>
+        <button data-view="settings">Settings</button>
+      </nav>
+      <div class="sidebar-bottom"><span id="account"></span><button id="sign-out" class="quiet">Sign out</button></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div><span class="eyebrow">WORKSPACE</span><h1 id="view-title">Overview</h1></div><span class="environment">Admin workspace</span></header>
+      <div id="notice" role="status"></div>
+      <section id="view" aria-live="polite"></section>
+    </main>
+  </div>
+</body>
+</html>

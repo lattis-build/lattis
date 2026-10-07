@@ -1,0 +1,2 @@
+CREATE TABLE IF NOT EXISTS lattis_admin_secret (name varchar(191) PRIMARY KEY, ciphertext mediumtext NOT NULL, version int NOT NULL CHECK (version > 0), created_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3));
+CREATE TABLE IF NOT EXISTS lattis_admin_setting (setting_key varchar(191) PRIMARY KEY, setting_value text NOT NULL, updated_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3));

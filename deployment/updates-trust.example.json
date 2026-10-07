@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "origin": "https://updates.lattis.build",
+  "rootPath": "/etc/lattis/updates-root.json",
+  "rootDigest": "REPLACE_WITH_INDEPENDENTLY_CONFIRMED_SHA256_FINGERPRINT"
+}

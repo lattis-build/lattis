@@ -1,0 +1,25 @@
+[Unit]
+Description=Lattis application through protected release launcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lattis-runtime
+Group=lattis-runtime
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/lattis/runtime.env
+UnsetEnvironment=NODE_OPTIONS NODE_PATH
+ExecStart=/usr/bin/node /opt/lattis-updater/lattis-updater.mjs run app
+Restart=on-failure
+TimeoutStopSec=45
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/lattis-home-runtime
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

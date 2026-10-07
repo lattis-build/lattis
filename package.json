@@ -1,0 +1,66 @@
+{
+  "name": "lattis",
+  "version": "0.2.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "lattis": "./bin/lattis.js"
+  },
+  "exports": {
+    "./runtime": "./src/runtime.ts",
+    "./video-contract": "./src/video-contract.ts",
+    "./app-db": "./src/app-db.ts"
+  },
+  "files": [
+    "bin",
+    "src",
+    "db",
+    "packages/local/paynow",
+    "packages/local/fakturownia",
+    "packages/local/commerce",
+    "wordpress",
+    "web",
+    "openapi",
+    ".env.example",
+    "updater/lib",
+    "deployment"
+  ],
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
+  "scripts": {
+    "app": "node bin/lattis.js serve-app",
+    "admin": "node bin/lattis.js serve-admin",
+    "geode": "node --env-file=.env --import tsx src/geode-server.ts",
+    "mcp:local": "node bin/lattis.js mcp-local",
+    "mcp:remote": "node bin/lattis.js mcp-remote",
+    "lattis": "node bin/lattis.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@modelcontextprotocol/server": "^2.1.0",
+    "@tufjs/canonical-json": "2.0.0",
+    "@tufjs/models": "5.0.0",
+    "auth": "^1.7.5",
+    "better-auth": "^1.7.6",
+    "fastify": "^5.12.5",
+    "jose": "^6.1.0",
+    "mysql2": "^3.24.4",
+    "pg": "^8.16.3",
+    "semver": "^7.7.3",
+    "tsx": "^4.20.6",
+    "tuf-js": "6.0.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.6",
+    "@types/pg": "^8.15.5",
+    "@types/semver": "^7.7.1",
+    "typescript": "^5.9.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lattis-build/lattis.git"
+  }
+}

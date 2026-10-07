@@ -1,0 +1,8 @@
+{
+  "releaseId": "sha256:REPLACE",
+  "previousRelease": null,
+  "runtimeStopped": true,
+  "databaseDialect": "postgres",
+  "backupReference": "REPLACE_WITH_ACTUAL_RESTORABLE_BACKUP_REFERENCE",
+  "appliedMigrations": []
+}

@@ -1,0 +1,867 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Lattis application API",
+    "version": "0.1.0-content-draft"
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:4100"
+    }
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "summary": "Liveness",
+        "responses": {
+          "200": {
+            "description": "Live"
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "summary": "Readiness",
+        "responses": {
+          "200": {
+            "description": "Ready"
+          },
+          "503": {
+            "description": "Unavailable"
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "summary": "Core version",
+        "responses": {
+          "200": {
+            "description": "Version"
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "summary": "Current user",
+        "responses": {
+          "200": {
+            "description": "Principal"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/policies/check": {
+      "post": {
+        "summary": "Evaluate current user's policy",
+        "responses": {
+          "200": {
+            "description": "Decision"
+          }
+        }
+      }
+    },
+    "/api/roles/grants": {
+      "post": {
+        "summary": "Create role grant",
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/api/roles/assignments": {
+      "post": {
+        "summary": "Assign role",
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove role assignment",
+        "responses": {
+          "200": {
+            "description": "Removed"
+          }
+        }
+      }
+    },
+    "/api/modules": {
+      "get": {
+        "summary": "Installed modules",
+        "responses": {
+          "200": {
+            "description": "Modules"
+          }
+        }
+      }
+    },
+    "/api/secrets/references": {
+      "post": {
+        "summary": "Create secret reference",
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/api/nodes": {
+      "get": {
+        "summary": "Trusted local Nodes",
+        "responses": {
+          "200": {
+            "description": "Nodes"
+          }
+        }
+      }
+    },
+    "/api/nodes/{name}/execute": {
+      "post": {
+        "summary": "Execute authorized trusted Node",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Result"
+          }
+        }
+      }
+    },
+    "/api/content-types": {
+      "get": {
+        "summary": "List content type definitions",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.type.read:content"
+      },
+      "post": {
+        "summary": "Create content type definition",
+        "responses": {
+          "201": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.type.manage:content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentType"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/content": {
+      "get": {
+        "summary": "List published content",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/content/{id}": {
+      "get": {
+        "summary": "Read published content, visible fields, links and terms",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/manage/content": {
+      "get": {
+        "summary": "List content including drafts",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.read:content"
+      },
+      "post": {
+        "summary": "Create content",
+        "responses": {
+          "201": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.write:content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manage/content/{id}": {
+      "get": {
+        "summary": "Read content including drafts",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.read:content"
+      },
+      "put": {
+        "summary": "Replace content with expectedRevision",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.write:content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expectedRevision",
+                  "content"
+                ],
+                "properties": {
+                  "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "content": {
+                    "$ref": "#/components/schemas/ContentInput"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manage/content/{id}/links": {
+      "put": {
+        "summary": "Replace links to content, Nodes, Shards or media",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.write:content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ContentLink"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manage/content/{id}/terms": {
+      "put": {
+        "summary": "Replace taxonomy term assignments",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.write:content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxonomy-terms": {
+      "get": {
+        "summary": "List taxonomy terms",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.taxonomy.read:content"
+      },
+      "post": {
+        "summary": "Create taxonomy term",
+        "responses": {
+          "201": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.taxonomy.manage:content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/media": {
+      "post": {
+        "summary": "Register media reference",
+        "responses": {
+          "201": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.media.manage:content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/media/{id}": {
+      "get": {
+        "summary": "Read media reference",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.media.read:content"
+      }
+    },
+    "/api/imports/wordpress/cursor": {
+      "get": {
+        "summary": "Read WordPress import cursor",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.import:content"
+      }
+    },
+    "/api/imports/wordpress/batches": {
+      "post": {
+        "summary": "Import an idempotent WordPress batch",
+        "responses": {
+          "200": {
+            "description": "Result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "x-lattis-permission": "content.import:content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WordPressBatch"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/wordpress/users/cursor": {
+      "get": { "summary": "Read WordPress user import cursor", "x-lattis-permission": "user.import:user", "responses": { "200": { "description": "Cursor" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" } } }
+    },
+    "/api/imports/wordpress/users/batches": {
+      "post": { "summary": "Import WordPress identities, optionally with encrypted legacy password hashes", "x-lattis-permission": "user.import:user", "responses": { "200": { "description": "Batch imported" }, "400": { "description": "Invalid input" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "409": { "description": "Cursor conflict" }, "503": { "description": "Password migration is not configured" } } }
+    },
+    "/api/me/imported-identities": {
+      "get": { "summary": "List source identities for a verified email", "responses": { "200": { "description": "Identities" }, "401": { "description": "Verified account required" } } }
+    },
+    "/api/me/imported-identities/claim": {
+      "post": { "summary": "Claim source identities after email verification", "responses": { "200": { "description": "Claimed count" }, "401": { "description": "Verified account required" }, "409": { "description": "Identity conflict" } } }
+    },
+    "/api/imports/wordpress/media-files": {
+      "post": { "summary": "Upload a WordPress media file with checksum", "x-lattis-permission": "content.import:content", "responses": { "201": { "description": "File imported" }, "200": { "description": "Already imported" }, "400": { "description": "Invalid file" }, "409": { "description": "Source conflict" } } }
+    },
+    "/api/imports/wordpress/media-files/map": {
+      "get": { "summary": "List migrated media URLs for content rewriting", "x-lattis-permission": "content.import:content", "responses": { "200": { "description": "Mapping page" } } }
+    },
+    "/api/media/{id}/file": {
+      "get": { "summary": "Serve a local file when linked to published content or authorized", "responses": { "200": { "description": "File" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "404": { "description": "File not found" } } }
+    },
+    "/api/videos/{id}/file": {
+      "put": { "summary": "Stream an MP4 upload into private storage", "x-lattis-permission": "video.manage:video", "requestBody": { "required": true, "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } }, "responses": { "201": { "description": "Video uploaded" }, "400": { "description": "Hash or format mismatch" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "409": { "description": "Upload conflict" }, "413": { "description": "Too large" } } }
+    },
+    "/api/videos/{id}/playback": {
+      "post": { "summary": "Create a player-neutral attributed playback session with HLS/DASH CMAF sources when packaged", "x-lattis-permission": "video.play:video", "responses": { "200": { "description": "Playback descriptor v1 with sources, protection and watermark policy" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "501": { "description": "Required DRM or forensic watermark is unavailable" } } }
+    },
+    "/api/videos/{id}/playback/{playbackId}/packages/{packageId}/{path}": {
+      "get": { "summary": "Serve a CMAF HLS/DASH manifest or segment within an authorized playback session", "x-lattis-permission": "video.play:video", "responses": { "200": { "description": "Manifest or segment" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "404": { "description": "Session or package unavailable" } } }
+    },
+    "/api/videos/{id}/stream": {
+      "get": { "summary": "Stream an authorized playback with byte ranges", "x-lattis-permission": "video.play:video", "responses": { "200": { "description": "Full MP4" }, "206": { "description": "MP4 byte range" }, "401": { "description": "Unauthenticated" }, "403": { "description": "Forbidden" }, "416": { "description": "Invalid range" } } }
+    },
+    "/lattis-video-player.js": {
+      "get": { "summary": "Load the reusable Lattis video player web component", "responses": { "200": { "description": "JavaScript module" } } }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ContentField": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text",
+              "richtext",
+              "number",
+              "boolean",
+              "date",
+              "object",
+              "array",
+              "reference",
+              "media",
+              "json"
+            ]
+          },
+          "required": {
+            "type": "boolean",
+            "default": false
+          },
+          "public": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContentType": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "fields"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentField"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContentInput": {
+        "type": "object",
+        "required": [
+          "type",
+          "slug"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContentLink": {
+        "type": "object",
+        "required": [
+          "relation",
+          "targetKind",
+          "targetRef"
+        ],
+        "properties": {
+          "relation": {
+            "type": "string"
+          },
+          "targetKind": {
+            "enum": [
+              "content",
+              "node",
+              "shard",
+              "media",
+              "external"
+            ]
+          },
+          "targetRef": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "WordPressBatch": {
+        "type": "object",
+        "required": [
+          "site",
+          "importKey",
+          "expectedCursor",
+          "nextCursor",
+          "items"
+        ],
+        "properties": {
+          "site": {
+            "type": "string",
+            "format": "uri"
+          },
+          "importKey": {
+            "type": "string"
+          },
+          "expectedCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "terms": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "slug",
+                "status"
+              ],
+              "properties": {
+                "id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    }
+                  ]
+                },
+                "type": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "acf": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

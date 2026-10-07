@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "applicationId": "lattis-home",
+  "localPublisher": "lattis",
+  "releaseDirectory": "/srv/lattis-home/releases",
+  "stateDirectory": "/var/lib/lattis-home-updater",
+  "ownerKeys": {},
+  "ownerThreshold": 2,
+  "allowDownloadedExecution": false
+}

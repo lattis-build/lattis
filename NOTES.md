@@ -1,1 +1,0 @@
-# Lattis - Composable Platform
