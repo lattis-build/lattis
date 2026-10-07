@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { AppClient, AppDatabase } from './app-db.js';
 import type { createAuth } from './auth.js';
 
-const verifier = fileURLToPath(new URL('../wordpress/password-verify.php', import.meta.url));
+const verifier = fileURLToPath(new URL('./compat/wordpress-password-verify.php', import.meta.url));
 const bcryptHash = /^\$2[aby]\$(0[4-9]|1[0-4])\$[.\/A-Za-z0-9]{53}$/;
 const phpassHash = /^\$P\$[.\/0-9A-Za-z]{31}$/;
 

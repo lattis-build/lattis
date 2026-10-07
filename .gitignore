@@ -15,3 +15,16 @@ geode-artifacts/
 *.private.pem
 offline-keys/
 release-bundles/
+
+# Local development material outside the distributed Core.
+/.lattis/
+/docs/
+/packages/local/
+/wordpress/
+/examples/
+/AGENTS.md
+/LATTIS_PROMPT_STARTOWY.md
+/PRODUCT_POLICY.md
+/SECURITY.md
+/CHANGELOG.md
+/tools/prepare-source-release.py

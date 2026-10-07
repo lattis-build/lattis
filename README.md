@@ -1,55 +1,86 @@
-# Lattis 0.3.0-alpha.1
+# Lattis
 
-Headless fundament aplikacji: logowanie, uprawnienia, treść, wideo, kontrolowane rozszerzenia, katalog Geode oraz MCP. Frontend wybiera aplikacja. Własny kod repozytorium jest dostępny na [MIT](LICENSE), właściciel: **#1 GROUP PROSTA SPÓŁKA AKCYJNA**.
+**A composable headless foundation for web applications.**
 
-**Status:** przygotowane źródła alpha. W tej zmianie nie uruchomiono testów, lintów, buildów, skanów ani usług. Kod nie ma potwierdzonej gotowości produkcyjnej. Aplikacja obsługuje adaptery PostgreSQL/MariaDB; Geode zachowuje PostgreSQL. Forge, AI i Cloud pozostają planem osobnych produktów.
+Lattis provides the backend foundations shared by content platforms, learning products and custom web applications: authentication, authorization, structured content, media and controlled extensions. Build your frontend with the tools you prefer and connect it through the HTTP API.
 
-**Aktualny proces wydań:** [15 — Kontrolowany produkt 0.3](docs/15-kontrolowany-produkt-0.3.md). Produkcyjne rozszerzenia są deklaracjami JSON; własny TS pozostaje deweloperski. Panel korzysta ze wspólnych formularzy, a pobranie z Geode nie uruchamia pakietu. Katalog v3 i descriptor wydania v3 wiążą dokładne wersje z oceną jakości. Dodano szablony WAF, runnera i monitorowania integralności. Nie wdrożono ich na serwerze i nie opublikowano kotwic ani podpisanej dystrybucji. Przykładowe oceny są `pending` i blokują aktywację.
+Lattis Core is available under the [MIT license](LICENSE). You can use it commercially, self-host it and build your own applications on top of it.
 
-Zasady: [polityka produktu](PRODUCT_POLICY.md), [bezpieczeństwo i zgłoszenia](SECURITY.md), [licencja i zarabianie](docs/16-licencja-i-model-produktu.md), [zmiany i migracja](CHANGELOG.md).
+## What Lattis provides
 
-| Dokument | Zawartość |
+- **Identity and access** — authentication with Better Auth, resource permissions, service tokens and an audit trail.
+- **Content and media** — structured content, relationships, media storage and video building blocks.
+- **Controlled extensions** — versioned JSON declarations that compose authorized backend operations without loading extension scripts into the application process.
+- **An optional administration panel** — a consistent interface with shared forms for declarative extensions.
+- **Developer tooling** — a CLI, project scaffolding, database migrations and MCP integration.
+- **Controlled delivery** — Geode catalog support, pinned artifacts and a separate updater for authorized application releases.
+
+The application database can use PostgreSQL or MariaDB. Geode uses PostgreSQL and is operated separately from an application. Optional business integrations and third-party Nodes are not bundled with Core.
+
+## Getting started
+
+The current version is **0.3.0-alpha.1**. Start with a local development environment. The npm package and signed production distribution are not published yet; use a source checkout with repository access.
+
+Use Node.js matching the `engines.node` range in [package.json](package.json), npm and an application database.
+
+```sh
+git clone --depth 1 https://github.com/lattis-build/lattis.git
+cd lattis
+npm ci --ignore-scripts
+node bin/lattis.js init ../my-app
+cd ../my-app
+npm install --ignore-scripts
+cp .env.example .env
+```
+
+Set your database URL, a random authentication secret and the instance owner's email in `.env`:
+
+| Variable | Purpose |
 |---|---|
-| [01 — Plan systemu](docs/01-plan-systemu.md) | Wizja, granice, terminologia, wybór technologii, repo, roadmapa i rewizja pierwotnej koncepcji. |
-| [02 — Faza 1 i kontrakty](docs/02-faza-1-kontrakty.md) | Zakres pierwszego wydania bez UI, modele Node/Shard, Geode, MCP, auth i API. |
-| [03 — Bezpieczeństwo i wydania](docs/03-bezpieczenstwo-i-wydania.md) | Granice zaufania, sekrety, publikacja kodu, aktualizacje, rollback i koszty operacyjne. |
-| [04 — Decyzje i źródła](docs/04-decyzje-i-zrodla.md) | Ustalenia, rekomendacje do zatwierdzenia, otwarte pytania, odniesienia do briefu i plan przyszłej weryfikacji. |
-| [05 — Pierwsza aplikacja](docs/05-implementacja-fazy-1.md) | Utworzenie pustej aplikacji, moduły, migracje, uruchomienie, wydanie i ograniczenia. |
-| [06 — Kompozycja i porty](docs/06-kompozycja-porty-i-backlog.md) | Stan rzeczywisty, brakujące kontrakty Node/Shard, przenośność DB, ingress, zdarzenia, aktywacja z Geode i backlog. |
-| [07 — Treść i bazy](docs/07-tresc-i-bazy.md) | Nowy model treści, API, importer WordPress i wybór PostgreSQL/MariaDB dla aplikacji. |
-| [08 — Migracja WordPress](docs/08-migracja-wordpress-i-bezpieczenstwo.md) | Wtyczka WP-CLI, użytkownicy, media oraz wymagania ochrony danych. |
-| [09 — Wideo](docs/09-wideo.md) | Node odtwarzania, prywatny strumień MP4, sesje widzów i granice DRM oraz znaku wodnego. |
-| [10 — Architektura wideo](docs/10-architektura-wideo.md) | Niezależny od odtwarzacza kontrakt, pakowanie HLS/DASH, CMAF oraz granice DRM i znakowania śledczego. |
-| [09 — Audyt immudb](docs/09-immudb-audyt.md) | Opcjonalny rejestr odcisków zdarzeń audytu, kolejka i niezależna weryfikacja. |
-| [11 — Panel i zdalny MCP](docs/11-panel-i-zdalny-mcp.md) | Zdalna praca nad aplikacją, opcjonalny panel Lattis Admin i przygotowanie publicznego Geode. |
-| [12 — Geode: zaufanie i izolacja](docs/12-geode-zaufanie-i-izolacja.md) | Historyczny projekt granic zaufania; bieżąca implementacja i jej ograniczenia są w dokumencie 15. |
-| [13 — Aktualizacje całego Lattis](docs/13-architektura-aktualizacji-lattis.md) | Historyczny projekt aktualizatora, migracji i odzyskiwania; aktualny proces opisuje dokument 15. |
-| [14 — Publiczne wydanie 0.2](docs/14-publiczne-wydanie-0.2.md) | Historyczny opis wdrożenia i kotwic. Kontrakty rozszerzeń i wydań zastępuje dokument 0.3. |
-| [15 — Kontrolowany produkt 0.3](docs/15-kontrolowany-produkt-0.3.md) | Deklaracje, runner, UI, WAF, ocena jakości, updater 2 i migracja. |
-| [16 — Licencja i model produktu](docs/16-licencja-i-model-produktu.md) | MIT, prawa do forków, oficjalny kanał i przyszłe Forge/AI/Cloud. |
-| [Commerce](packages/local/commerce/README.md) | Opcjonalny identyfikator sprzedaży, migawka nabywcy i pozycji, statusy oraz powiązania z innymi Nodes. |
-| [Paynow v3](packages/local/paynow/README.md) | Opcjonalny Node płatności z osobnym workerem i podpisanym odbiornikiem powiadomień. |
-| [Fakturownia](packages/local/fakturownia/README.md) | Opcjonalny Node faktur z szyfrowanym zleceniem i osobnym workerem. |
+| `APP_DATABASE_URL` | PostgreSQL or MariaDB connection for the application. |
+| `BETTER_AUTH_SECRET` | A random secret of at least 32 characters. |
+| `APP_BASE_URL` | Application origin, such as `http://127.0.0.1:4100` for development. |
+| `LATTIS_OWNER_EMAIL` | Email of the instance owner. |
+| `LATTIS_MAIL_WEBHOOK_URL` / `LATTIS_MAIL_WEBHOOK_TOKEN` | Mail delivery for email verification and password recovery. |
 
-## Kod
+Then create the application and authentication tables and start the development server:
 
-- `src/app-server.ts` — instancja Core na aplikację, auth Better Auth, polityka dostępu, Nodes, trasy Shards i referencje sekretów.
-- `src/content.ts`, `src/wordpress-import.ts`, `src/user-import.ts` i `src/media-transfer.ts` — treść, użytkownicy źródłowi i media.
-- `wordpress/lattis-migrator/lattis-migrator.php` — wtyczka WP-CLI do przenoszenia danych, bez migracji frontendu.
-- `src/app-db.ts` — adapter bazy aplikacji PostgreSQL/MariaDB; Geode zachowuje własny adapter PostgreSQL.
-- `src/immudb-audit.ts` — opcjonalny eksport odcisków audytu do immudb z kolejką w bazie aplikacji.
-- `src/extension-contract.ts`, `src/extensions.ts`, `runner/` — deklaracje i osobny interpreter danych; `src/node-executor.ts` — broker panelu.
-- `src/runtime.ts` — ładowanie deklaracji; importy własnych modułów TS i trasy Shards wyłącznie w rozwoju.
-- `src/geode-server.ts` — centralne Geode HTTP i zdalny MCP Streamable HTTP.
-- `src/local-mcp.ts` — lokalny MCP `stdio` dla repo aplikacji.
-- `src/remote-mcp.ts` — opcjonalny MCP aplikacji na serwerze; `src/admin-server.ts` — opcjonalny panel właściciela.
-- `src/cli.ts` — inicjowanie projektu, tworzenie Node/Shard, publikacja, instalacja i przygotowanie wydania.
-- `src/registry-client.ts` — pobieranie wyłącznie na podstawie aktualnego katalogu TUF; zmiany trafiają do kandydatów.
-- `updater/` — osobny pakiet aktualizatora i launchera; polityka poza aplikacją.
-- `tools/offline-repository.ts` — narzędzia do przygotowania i podpisywania metadanych na stacji wydawniczej.
-- `src/project-migrations.ts` — migracje danych własnej aplikacji, oddzielone od Core i auth.
-- `deployment/` — niewdrożone szablony usług, WAF i ocen; nie są potwierdzeniem działania ochrony.
+```sh
+npm run lattis -- db:app
+npm run lattis -- db:auth
+npm run app
+```
 
-## Zasada pracy
+The initializer creates an independent application directory with its own configuration, lockfile and local dependency on the Core checkout. No optional integration is installed or enabled. Keep `.env` and application secrets outside version control.
 
-Codex wykonuje rutynowe operacje techniczne samodzielnie w dostępnych uprawnieniach. Testy i pozostałe weryfikacje wykonuje dopiero na wyraźne polecenie użytkownika. Ta zasada jest także w [AGENTS.md](AGENTS.md).
+## Extending an application
+
+Create a declarative extension using your application's `localPublisher` namespace:
+
+```sh
+npm run lattis -- extension:new @owner/example extensions/example.json
+```
+
+A declaration defines input and output fields, permitted Node calls and views rendered by the standard panel. Each call uses the current user's permissions. Extensions do not supply JavaScript, HTML, CSS or installation hooks. New scaffolds start with an `UNLICENSED` marker so you can choose the license for your own work.
+
+Declarative extensions require the separate expression runner. In development, create a private socket directory and use the same absolute `LATTIS_RUNNER_SOCKET` path for Core and the runner:
+
+```sh
+node node_modules/lattis/runner/extension-runner.mjs
+```
+
+Run that process separately from the application server. TypeScript Node and Shard scaffolds are development tools; production releases do not load them. Downloading an artifact from Geode does not authorize or execute it.
+
+## Deployment
+
+Production uses an independently installed updater, protected trust policies and a signed inventory of the complete application and its dependencies. Application code is read-only to the runtime account; writable data and secrets live outside the release directory.
+
+The [deployment directory](deployment) contains templates for the application, Admin, the isolated expression runner, integrity observation and an Nginx/ModSecurity/OWASP CRS edge. Configure these for your infrastructure, keep backend ports private and provide the required trust anchors, owner approvals and release review evidence. Example policies contain placeholders and cannot authorize a deployment as supplied.
+
+The updater is maintained as a [separate package](updater). It stages and activates authorized releases; it does not run candidate installation hooks or automatically roll back database migrations.
+
+This alpha has no confirmed production readiness. Signed artifacts establish provenance and file integrity; they do not guarantee the absence of vulnerabilities. Deployment templates require validation on the target infrastructure before public use.
+
+## License
+
+[MIT](LICENSE) — Copyright © 2026 **#1 GROUP PROSTA SPÓŁKA AKCYJNA**. Third-party dependencies retain their own licenses.

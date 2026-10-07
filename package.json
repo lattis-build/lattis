@@ -15,23 +15,14 @@
     "bin",
     "src",
     "db",
-    "packages/local/paynow",
-    "packages/local/fakturownia",
-    "packages/local/commerce",
-    "wordpress",
     "web",
     "openapi",
-    ".env.example",
+    "runner",
     "updater/lib",
     "deployment",
-    "runner",
-    "examples/extensions",
-    "LICENSE",
-    "SECURITY.md",
-    "PRODUCT_POLICY.md",
-    "CHANGELOG.md",
-    "docs/15-kontrolowany-produkt-0.3.md",
-    "docs/16-licencja-i-model-produktu.md"
+    ".env.example",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
@@ -71,5 +62,6 @@
     "type": "git",
     "url": "https://github.com/lattis-build/lattis.git"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "description": "A composable headless foundation for web applications with authentication, authorization and controlled extensions."
 }
